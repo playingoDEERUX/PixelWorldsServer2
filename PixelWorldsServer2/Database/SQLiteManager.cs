@@ -10,7 +10,7 @@ namespace PixelWorldsServer2.Database
     {
         private SQLiteConnection sqliteConn = null;
 
-        public SQLiteConnection GetConnection() { return sqliteConn; }
+        public SQLiteConnection GetConnection() => sqliteConn;
         public bool Connect()
         {
             sqliteConn =
@@ -34,7 +34,16 @@ namespace PixelWorldsServer2.Database
             return true;
         }
 
-        
+        public long GetLastInsertID()
+        {
+            if (sqliteConn == null)
+                return 0;
+
+            if (sqliteConn.State == System.Data.ConnectionState.Open)
+                return 0;
+
+            return sqliteConn.LastInsertRowId;
+        }
 
         public int Query(string q)
         {
@@ -64,6 +73,36 @@ namespace PixelWorldsServer2.Database
             }
 
             return -1;
+        }
+
+        public SQLiteDataReader FetchQuery(string q)
+        {
+            if (sqliteConn == null)
+                return null;
+
+            if (sqliteConn.State != System.Data.ConnectionState.Open)
+            {
+                if (!Connect())
+                    return null;
+            }
+
+            // ensure its OPENED now:
+            if (sqliteConn.State == System.Data.ConnectionState.Open)
+            {
+                var sqliteCmd = sqliteConn.CreateCommand();
+                sqliteCmd.CommandText = q;
+
+                try
+                {
+                    return sqliteCmd.ExecuteReader();
+                }
+                catch (Exception ex)
+                {
+                    Util.Log("EXCEPTION during SQLiteManager Query: " + ex.Message);
+                }
+            }
+
+            return null;
         }
 
         public void Close()

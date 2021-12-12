@@ -647,8 +647,6 @@ namespace Kernys.Bson
 		{
 			return mList.Contains(v);
 		}
-
-
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return mList.GetEnumerator();

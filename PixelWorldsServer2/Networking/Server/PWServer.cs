@@ -17,6 +17,7 @@ namespace PixelWorldsServer2.Networking.Server
         private MessageHandler msgHandler = null;
         private SQLiteManager sqlManager = null;
         private WorldManager worldManager = null;
+        public Dictionary<uint, Player> players = new Dictionary<uint, Player>();
         public FeatherServer GetServer() => fServer;
         public MessageHandler GetMessageHandler() => msgHandler;
         public WorldManager GetWorldManager() => worldManager;
@@ -28,9 +29,8 @@ namespace PixelWorldsServer2.Networking.Server
             fServer = new FeatherServer(Port);
             msgHandler = new MessageHandler(this);
             sqlManager = new SQLiteManager();
-            worldManager = new WorldManager();
+            worldManager = new WorldManager(this);
         }
-
         public SQLiteManager GetSQL() { return sqlManager; }
 
         public bool Start()
@@ -81,12 +81,41 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
                 }
             }
+
+            foreach (var p in players.Values)
+            {
+                if (p.isInGame)
+                    p.Tick();
+            }
         }
 
         private void onDisconnect(FeatherClient client, int flags)
         {
             if (client == null)
                 return;
+
+            if (client.data == null)
+                return;
+
+            var pData = (Player.PlayerData)client.data;
+
+            if (players.ContainsKey(pData.UserID))
+            {
+                // depends on whether we were the last instance to disconnect with that userID:
+                // have to this as the player might try to relogon onto the same session.
+                ushort instances = 0;
+                foreach (FeatherClient fClient in fServer.GetClients())
+                {
+                    if (((Player.PlayerData)fClient.data).UserID == pData.UserID)
+                        instances++;
+                }
+
+                Player p = players[pData.UserID];
+                p.isInGame = instances > 0;
+               
+                if (!p.isInGame)
+                    p.SetClient(null);
+            }
         }
 
         private void onReceive(FeatherClient client, BSONObject packet, int flags)

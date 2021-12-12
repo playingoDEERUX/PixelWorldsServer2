@@ -35,6 +35,8 @@ namespace PixelWorldsServer2.Networking.Server
                 return; // Invalid Pixel Worlds BSON packet!
             }
 
+            Player p = client.data == null ? null : ((Player.PlayerData)client.data).player; // re-retrieve the player here.
+
             try
             {
                 int messageCount = bObj["mc"];
@@ -66,11 +68,11 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
 
                         case MsgLabels.Ident.GetPlayerData:
-                            HandlePlayerLogon(client, bObj);
+                            HandlePlayerLogon(client, mObj);
                             break;
 
                         case MsgLabels.Ident.TryToJoinWorld:
-                            HandleTryToJoinWorld(client, bObj);
+                            HandleTryToJoinWorld(p, mObj);
                             break;
 
                         default:
@@ -93,20 +95,37 @@ namespace PixelWorldsServer2.Networking.Server
 #if DEBUG
             Util.Log("Handling player logon...");
 #endif
+            uint userID = 0;
+
+            if (!pServer.players.ContainsKey(userID))
+            {
+                pServer.players[userID] = new Player(client); // just a test with userID = 0
+            }
+            else
+            {
+                Player p = pServer.players[userID];
+                client.data = p.GetData();
+                p.SetClient(client); // override client...
+            }
+
+            ((Player.PlayerData)client.data).player.isInGame = true;
 
             var bsObj = SimpleBSON.Load(File.ReadAllBytes("player.dat").Skip(4).ToArray())["m0"] as BSONObject;
             client.Send(bsObj);
         }
 
-        public void HandleTryToJoinWorld(FeatherClient client, BSONObject bObj)
+        public void HandleTryToJoinWorld(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             BSONObject resp = new BSONObject(MsgLabels.Ident.TryToJoinWorld);
             resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
 
             var wmgr = pServer.GetWorldManager();
             string worldName = bObj["W"];
 
-            WorldSession world = wmgr.GetByName(bObj[worldName], true);
+            WorldSession world = wmgr.GetByName(worldName, true);
 
             if (SQLiteManager.HasIllegalChar(worldName))
             {
@@ -120,8 +139,7 @@ namespace PixelWorldsServer2.Networking.Server
             {
                 resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
             }
-
-            client.Send(resp);
+            p.Send(ref resp);
         }
 
         public void HandleSyncTime(FeatherClient client)

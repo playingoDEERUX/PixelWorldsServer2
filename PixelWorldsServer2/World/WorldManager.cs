@@ -1,16 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using PixelWorldsServer2.Networking.Server;
 
 namespace PixelWorldsServer2.World
 {
     class WorldManager
     {
+        private PWServer pServer = null;
         private List<WorldSession> worlds = new List<WorldSession>();
         public List<WorldSession> GetWorlds() => worlds;
 
+        public WorldManager(PWServer pServer)
+        {
+            this.pServer = pServer;
+        }
 
-        
         public WorldSession GetByName(string name, bool force = false)
         {
             string worldName = name.ToUpper();
@@ -24,7 +29,7 @@ namespace PixelWorldsServer2.World
             if (!force)
                 return null;
 
-            var w = new WorldSession(name); // load or generate.
+            var w = new WorldSession(pServer, name); // load or generate.
             Add(w);
 
             return w;

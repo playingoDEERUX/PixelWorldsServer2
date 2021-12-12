@@ -43,8 +43,8 @@ namespace PixelWorldsServer2
             var pSQL = pwServer.GetSQL();
             if (pSQL.Connect())
             {
-                pSQL.Query("CREATE TABLE IF NOT EXISTS players (ID INTEGER PRIMARY KEY NOT NULL)");
-                pSQL.Query("CREATE TABLE IF NOT EXISTS worlds (ID INTEGER PRIMARY KEY NOT NULL)");
+                pSQL.Query("CREATE TABLE IF NOT EXISTS players (ID INTEGER PRIMARY KEY NOT NULL, Name varchar(24) NOT NULL DEFAULT '')");
+                pSQL.Query("CREATE TABLE IF NOT EXISTS worlds (ID INTEGER PRIMARY KEY NOT NULL, Name varchar(32) NOT NULL DEFAULT '')");
             }
             else
             {
