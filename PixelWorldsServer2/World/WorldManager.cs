@@ -16,7 +16,7 @@ namespace PixelWorldsServer2.World
             this.pServer = pServer;
         }
 
-        public WorldSession GetByName(string name, bool force = false)
+        public WorldSession GetByName(string name, bool forceGen = false)
         {
             string worldName = name.ToUpper();
 
@@ -26,7 +26,7 @@ namespace PixelWorldsServer2.World
                     return s;
             }
 
-            if (!force)
+            if (!forceGen)
                 return null;
 
             var w = new WorldSession(pServer, name); // load or generate.

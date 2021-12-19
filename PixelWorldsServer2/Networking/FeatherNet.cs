@@ -25,6 +25,7 @@ namespace FeatherNet
     public struct FeatherDefaults
     {
         public const int PING_CLOCK_MS = 500;
+        public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MIN_TRANSACTION_SIZE = 4;
         public const int TIMEOUT_DURATION = 15000;
@@ -37,17 +38,34 @@ namespace FeatherNet
 
         public bool needsPing()
         {
-            return FeatherUtil.GetTimeMs() > lastResponse + FeatherDefaults.PING_CLOCK_MS;
+            return FeatherUtil.GetTimeMs() > lastResponse + (FeatherDefaults.PING_CLOCK_MS * pingMul);
         }
 
         private TcpClient client = null;
         private long lastResponse = 0;
+        public int pingMul = 1;
         private object host = null;
         public object data = null; // Freely applicable data that developer may or may not use.
         private List<BSONObject> outgoingPackets = new List<BSONObject>();
 
+        public string GetIPString()
+        {
+            // Return the IPv4-Address in string format:
+
+            if (client == null)
+                return "0.0.0.0";
+
+            if (!client.Connected)
+                return "0.0.0.0";
+
+            return ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+        }
         public object GetHost() => host;
-        public void UpdateLastResponse() { lastResponse = FeatherUtil.GetTimeMs(); }
+        public void UpdateLastResponse() 
+        { 
+            lastResponse = FeatherUtil.GetTimeMs();
+            pingMul = FeatherDefaults.PING_MULTIPLIER;
+        }
 
         public bool Flush()
         {
@@ -265,17 +283,22 @@ namespace FeatherNet
 
             foreach (FeatherClient fClient in clients)
             {
-                if (!fClient.Flush()) // Flush already existing packets.
+                var ev = fClient.CheckTimeout();
+
+                if (ev.type != FeatherEvent.Types.NONE)
                 {
-                    // If failed, disconnect immediately.
-                    events.Add(fClient.Disconnect());
-                    continue;
+                    events.Add(ev);
+
+                    if (ev.type == FeatherEvent.Types.PING_NOW)
+                        fClient.pingMul++;
+                    else if (ev.type == FeatherEvent.Types.DISCONNECT)
+                        continue; // dont handle this any further!
                 }
 
-                if (fClient.isDisconnecting())
+                if (!fClient.Flush()) // Flush already existing packets.
                 {
-                    events.Add(fClient.CheckTimeout());
-                    continue; // don't handle new packets, only check for timeout.
+                    //events.Add(fClient.Disconnect());
+                    continue;
                 }
 
                 var netStream = fClient.GetClient().GetStream();
@@ -300,7 +323,16 @@ namespace FeatherNet
                             break;
                         }
 
-                        if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE)
+                        if (recv == 0)
+                        {
+#if DEBUG
+                            Console.WriteLine("Client requested disconnect.");
+#endif
+                            events.Add(fClient.Disconnect());
+                            continue;
+                        }
+
+                        if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE) // generic bounds check
                             continue;
 
                         events.Add(fClient.Receive(buffer, recv));

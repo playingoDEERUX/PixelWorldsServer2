@@ -45,6 +45,50 @@ namespace PixelWorldsServer2.Database
             return sqliteConn.LastInsertRowId;
         }
 
+        public SQLiteCommand Make(string q)
+        {
+            if (sqliteConn == null)
+                return null;
+
+            if (sqliteConn.State != System.Data.ConnectionState.Open)
+            {
+                if (!Connect())
+                    return null;
+            }
+
+            // ensure its OPENED now:
+            if (sqliteConn.State == System.Data.ConnectionState.Open)
+            {
+                var sqliteCmd = sqliteConn.CreateCommand();
+                sqliteCmd.CommandText = q;
+                return sqliteCmd;
+            }
+
+            return null;
+        }
+
+        public int PreparedQuery(SQLiteCommand cmd)
+        {
+            cmd.Prepare();
+            return cmd.ExecuteNonQuery();
+        }
+
+        public SQLiteDataReader PreparedFetchQuery(SQLiteCommand cmd)
+        {
+            cmd.Prepare();
+
+            try
+            {
+                return cmd.ExecuteReader();
+            }
+            catch (Exception ex)
+            {
+                Util.Log("EXCEPTION during SQLiteManager Query: " + ex.Message);
+            }
+
+            return null;
+        }
+
         public int Query(string q)
         {
             if (sqliteConn == null)

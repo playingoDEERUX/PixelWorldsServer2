@@ -9,28 +9,26 @@ namespace PixelWorldsServer2
         [Obsolete]
         static void Main(string[] args)
         {
-            PWServer pwServer = new PWServer(10001);
-
             Util.Log("Pixel Worlds Server by playingo (C) 2021");
-
             Util.Log("Checking config...");
 
             if (!File.Exists("config.txt"))
             {
                 using (var fs = File.Create("config.txt"))
                 {
-
+                    Util.Log("NOTE: Created config file as it wasn't present.");
                 }
-                
             }
 
             string conf = File.ReadAllText("config.txt");
 
             Util.TextScanner scanner = new Util.TextScanner(conf);
 
+            int port = 10001;
             try
             {
-                Util.Log($"Logon port: {scanner.GetValueFromKey<int>("logon_port")}");
+                port = scanner.GetValueFromKey<int>("port");
+                Util.Log($"Server port: {port}");
                 Util.Log($"Beta Msg: {scanner.GetValueFromKey<string>("enable_beta_message")}");
             }
             catch
@@ -38,12 +36,23 @@ namespace PixelWorldsServer2
 
             }
 
+            PWServer pwServer = new PWServer(port);
+
             Util.Log("Checking SQLite db...");
 
             var pSQL = pwServer.GetSQL();
             if (pSQL.Connect())
             {
-                pSQL.Query("CREATE TABLE IF NOT EXISTS players (ID INTEGER PRIMARY KEY NOT NULL, Name varchar(24) NOT NULL DEFAULT '')");
+                pSQL.Query("CREATE TABLE IF NOT EXISTS players (ID INTEGER PRIMARY KEY NOT NULL, " +
+                    "Name varchar(24) NOT NULL DEFAULT '', " +
+                    "CognitoID varchar(64) DEFAULT NULL, " +
+                    "Token varchar(64) DEFAULT NULL, " +
+                    "IP char(20) NOT NULL DEFAULT '0.0.0.0'," +
+                    "Country char(3) NOT NULL DEFAULT '00'," +
+                    "Gems int NOT NULL DEFAULT '0'," +
+                    "ByteCoins int NOT NULL DEFAULT '0'," +
+                    "Settings int NOT NULL DEFAULT '0')");
+
                 pSQL.Query("CREATE TABLE IF NOT EXISTS worlds (ID INTEGER PRIMARY KEY NOT NULL, Name varchar(32) NOT NULL DEFAULT '')");
             }
             else
@@ -55,7 +64,7 @@ namespace PixelWorldsServer2
 
             if (pwServer.Start())
             {
-                Util.Log("Pixel Worlds Server has been started. Hosting now!");
+                Util.Log($"Pixel Worlds Server has been started. Hosting now at port {pwServer.Port}!");
 
                 while (pwServer.GetServer() != null)
                     pwServer.Host();

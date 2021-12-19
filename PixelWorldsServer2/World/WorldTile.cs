@@ -15,7 +15,7 @@ namespace PixelWorldsServer2.World
 
     public struct WorldLayer
     {
-        public ushort foregroundID, backgroundID;
+        public ushort id; // item id
         public byte blockType, damageNow;
         public object anotherSprite; // ?
         public bool activeAnimation;
@@ -28,9 +28,14 @@ namespace PixelWorldsServer2.World
     {
         WorldLayer[] layers;
 
-        public WorldLayer GetFG() => layers[(int)LayerType.Block];
-        public WorldLayer GetBG() => layers[(int)LayerType.Background];
-        public WorldLayer GetWater() => layers[(int)LayerType.Water];
-        public WorldLayer GetWiring() => layers[(int)LayerType.Wiring];
+        public ref WorldLayer fg => ref layers[(int)LayerType.Block];
+        public ref WorldLayer bg => ref layers[(int)LayerType.Background];
+        public ref WorldLayer water => ref layers[(int)LayerType.Water];
+        public ref WorldLayer wire => ref layers[(int)LayerType.Wiring];
+
+        public WorldTile()
+        {
+            layers = new WorldLayer[(int)LayerType.Unknown];
+        }
     }
 }

@@ -37,8 +37,10 @@ namespace PixelWorldsServer2.Networking.Server
 
             Player p = client.data == null ? null : ((Player.PlayerData)client.data).player; // re-retrieve the player here.
 
+#if RELEASE
             try
             {
+#endif
                 int messageCount = bObj["mc"];
 
                 for (int i = 0; i < messageCount; i++)
@@ -56,59 +58,81 @@ namespace PixelWorldsServer2.Networking.Server
 
                     switch (mID)
                     {
-                        case MsgLabels.Ident.VersionCheck:
+                    case MsgLabels.Ident.VersionCheck:
 #if DEBUG
-                            Util.Log("Client requests version check, responding now...");
+                        Util.Log("Client requests version check, responding now...");
 #endif
+                        BSONObject resp = new BSONObject();
+                        resp[MsgLabels.MessageID] = MsgLabels.Ident.VersionCheck;
+                        resp[MsgLabels.VersionNumberKey] = pServer.Version;
+                        client.Send(resp);
+                        break;
 
-                            BSONObject resp = new BSONObject();
-                            resp[MsgLabels.MessageID] = MsgLabels.Ident.VersionCheck;
-                            resp[MsgLabels.VersionNumberKey] = pServer.Version;
-                            client.Send(resp);
-                            break;
+                    case MsgLabels.Ident.GetPlayerData:
+                        HandlePlayerLogon(client, mObj);
+                        break;
 
-                        case MsgLabels.Ident.GetPlayerData:
-                            HandlePlayerLogon(client, mObj);
-                            break;
+                    case MsgLabels.Ident.TryToJoinWorld:
+                        HandleTryToJoinWorld(p, mObj);
+                        break;
 
-                        case MsgLabels.Ident.TryToJoinWorld:
-                            HandleTryToJoinWorld(p, mObj);
-                            break;
+                    case MsgLabels.Ident.GetWorld:
+                        HandleGetWorld(p, mObj);
+                        break;
 
-                        default:
-                            client.Send(new BSONObject(MsgLabels.Ident.Ping));
-                            break;
+                    case "rOP": // request other players
+                    case "rAI": // request AI (bots, etc.)??
+                    case "rAIp": // ??
+                        client.Send(mObj); // all todo
+                        break;
+
+                    case MsgLabels.Ident.MovePlayer:
+                        break;
+
+                    default:
+                        client.Send(new BSONObject(MsgLabels.Ident.Ping));
+                        break;
+
                     }
                 }
+#if RELEASE
             }
+        
             catch (Exception ex)
             {
-#if DEBUG
                 Util.Log("Bad BSON packet, force disconnect! (ex: " + ex.Message + ")");
-#endif
                 client.DisconnectLater();
             }
+#endif
         }
+
 
         public void HandlePlayerLogon(FeatherClient client, BSONObject bObj)
         {
 #if DEBUG
             Util.Log("Handling player logon...");
 #endif
-            uint userID = 0;
+
+            string cogID = bObj[MsgLabels.CognitoId];
+            string cogToken = bObj[MsgLabels.CognitoToken];
+
+            var accHelper = pServer.GetAccountHelper();
+
+            Player p = accHelper.LoginPlayer(cogID, cogToken, client.GetIPString());
+            uint userID = p.Data.UserID;
 
             if (!pServer.players.ContainsKey(userID))
             {
-                pServer.players[userID] = new Player(client); // just a test with userID = 0
+                pServer.players[userID] = p; // just a test with userID = 0
             }
             else
             {
-                Player p = pServer.players[userID];
-                client.data = p.GetData();
-                p.SetClient(client); // override client...
+                p = pServer.players[userID];
             }
 
-            ((Player.PlayerData)client.data).player.isInGame = true;
+            p.SetClient(client); // override client...
+            client.data = p.Data;
+            p.isInGame = true;
 
             var bsObj = SimpleBSON.Load(File.ReadAllBytes("player.dat").Skip(4).ToArray())["m0"] as BSONObject;
             client.Send(bsObj);
@@ -116,8 +140,12 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void HandleTryToJoinWorld(Player p, BSONObject bObj)
         {
+
             if (p == null)
+            {
+                Console.WriteLine("Player is null at TryToJoinWorld?!");
                 return;
+            }
 
             BSONObject resp = new BSONObject(MsgLabels.Ident.TryToJoinWorld);
             resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
@@ -133,12 +161,34 @@ namespace PixelWorldsServer2.Networking.Server
             }
             else if (world != null)
             {
+#if DEBUG
+                Console.WriteLine("World not null, JoinResult SUCCESS, joining world...");
+#endif
                 resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.SUCCESS;
             }
             else
             {
                 resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
             }
+
+            p.Send(ref resp);
+        }
+
+        public void HandleGetWorld(Player p, BSONObject bObj)
+        {
+            Console.WriteLine("Handling GetWorld... (todo)");
+
+            string worldName = bObj["W"];
+            var wmgr = pServer.GetWorldManager();
+
+            WorldSession world = wmgr.GetByName(worldName, false);
+
+            BSONObject resp = new BSONObject();
+            BSONObject wObj = world.Serialize();
+
+            resp[MsgLabels.MessageID] = MsgLabels.Ident.GetWorldCompressed;
+            resp["W"] = Util.LZMAHelper.CompressLZMA(SimpleBSON.Dump(wObj));
+
             p.Send(ref resp);
         }
 

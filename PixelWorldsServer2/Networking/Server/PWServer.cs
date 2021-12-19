@@ -12,15 +12,17 @@ namespace PixelWorldsServer2.Networking.Server
     class PWServer
     {
         public int Version = 91;
-        public int Port = 10001; // for quick-accessibility
+        public int Port; // for quick-accessibility
         private FeatherServer fServer = null;
         private MessageHandler msgHandler = null;
         private SQLiteManager sqlManager = null;
         private WorldManager worldManager = null;
+        private AccountHelper accountHelper = null;
         public Dictionary<uint, Player> players = new Dictionary<uint, Player>();
         public FeatherServer GetServer() => fServer;
         public MessageHandler GetMessageHandler() => msgHandler;
         public WorldManager GetWorldManager() => worldManager;
+        public AccountHelper GetAccountHelper() => accountHelper;
 
         [Obsolete]
         public PWServer(int port = 10001)
@@ -30,6 +32,7 @@ namespace PixelWorldsServer2.Networking.Server
             msgHandler = new MessageHandler(this);
             sqlManager = new SQLiteManager();
             worldManager = new WorldManager(this);
+            accountHelper = new AccountHelper(this);
         }
         public SQLiteManager GetSQL() { return sqlManager; }
 
@@ -112,9 +115,14 @@ namespace PixelWorldsServer2.Networking.Server
 
                 Player p = players[pData.UserID];
                 p.isInGame = instances > 0;
-               
+
                 if (!p.isInGame)
+                {
+#if DEBUG
+                    Console.WriteLine("Player nowhere ingame anymore, unregistering session...");
+#endif
                     p.SetClient(null);
+                }
             }
         }
 

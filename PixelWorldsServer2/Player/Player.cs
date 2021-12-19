@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.Net.Sockets;
 using System.Text;
 using FeatherNet;
@@ -16,18 +17,10 @@ namespace PixelWorldsServer2
 
             public uint UserID;
             public int Gems, Coins;
+            public string CognitoID, Token;
             public string Name;
+            public string LastIP;
             public PlayerInventory Inventory;
-
-            public PlayerData(Player player = null)
-            {
-                this.player = player;
-                UserID = 0;
-                Gems = 0;
-                Coins = 0;
-                Name = "";
-                Inventory = new PlayerInventory();
-            }
         }
 
         private PlayerData pData; // basically acts like a save, this is not the data that is assigned to the FeatherNet session itself.
@@ -39,14 +32,34 @@ namespace PixelWorldsServer2
 
             if (fClient != null)
             {
-                pData = new PlayerData(this);
+                pData.player = this;
+                pData.UserID = 0;
+                pData.Gems = 0;
+                pData.Coins = 0;
+                pData.CognitoID = "";
+                pData.Token = "";
+                pData.Name = "";
+                pData.LastIP = "0.0.0.0";
+                
                 fClient.data = pData; // interlink
             }
         }
+        public Player(SQLiteDataReader reader)
+        {
+            pData.player = this;
+            pData.UserID = (uint)(long)reader["ID"];
+            pData.Gems = (int)reader["Gems"];
+            pData.Coins = (int)reader["ByteCoins"];
+            pData.Name = (string)reader["Name"];
+            pData.LastIP = (string)reader["IP"];
+            pData.CognitoID = (string)reader["CognitoID"];
+            pData.Token = (string)reader["Token"];
+        }
+
 
         public FeatherClient Client { get { return fClient; } }
-        public ref dynamic Data { get { return ref fClient.data; } }
-        public ref PlayerData GetData() => ref pData;
+        public ref dynamic ClientData { get { return ref fClient.data; } }
+        public ref PlayerData Data => ref pData;
 
         public void Tick()
         {
