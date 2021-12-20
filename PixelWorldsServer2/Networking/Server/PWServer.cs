@@ -114,6 +114,9 @@ namespace PixelWorldsServer2.Networking.Server
                 ushort instances = 0;
                 foreach (FeatherClient fClient in fServer.GetClients())
                 {
+                    if (fClient.data == null)
+                        continue;
+
                     if (((Player.PlayerData)fClient.data).UserID == pData.UserID)
                         instances++;
                 }

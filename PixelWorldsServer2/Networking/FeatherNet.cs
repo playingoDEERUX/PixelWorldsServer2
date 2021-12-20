@@ -6,6 +6,7 @@ using System.Net;
 using System.IO;
 using Kernys.Bson;
 using System.Linq;
+using System.Threading;
 
 namespace FeatherNet
 {
@@ -24,7 +25,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 500;
+        public const int PING_CLOCK_MS = 500; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MIN_TRANSACTION_SIZE = 4;
@@ -34,13 +35,16 @@ namespace FeatherNet
     public class FeatherClient
     {
         private bool disconnectLater = false;
-        public bool isDisconnecting() { return disconnectLater; }
+        private bool timedOut = false;
+        public bool isDisconnecting() => disconnectLater;
+        public bool isTimedOut() => timedOut;
 
         public bool needsPing()
         {
             return FeatherUtil.GetTimeMs() > lastResponse + (FeatherDefaults.PING_CLOCK_MS * pingMul);
         }
 
+        public BSONObject metaObj = new BSONObject(); // reserved.
         private TcpClient client = null;
         private long lastResponse = 0;
         public int pingMul = 1;
@@ -75,39 +79,41 @@ namespace FeatherNet
             if (!client.Connected)
                 return false;
 
-            var ns = client.GetStream();
-
-            if (ns.CanWrite && outgoingPackets.Count > 0)
+            using (var ns = client.GetStream())
             {
-                // Serialize all bson objects into a single one:
 
-                BSONObject packet = new BSONObject();
-
-                for (int i = 0; i < outgoingPackets.Count; i++)
+                if (ns.CanWrite && outgoingPackets.Count > 0)
                 {
-                    packet[$"m{i}"] = outgoingPackets[i];
+                    // Serialize all bson objects into a single one:
+
+                    BSONObject packet = new BSONObject();
+
+                    for (int i = 0; i < outgoingPackets.Count; i++)
+                    {
+                        packet[$"m{i}"] = outgoingPackets[i];
+                    }
+                    packet["mc"] = outgoingPackets.Count;
+
+                    outgoingPackets.Clear();
+
+                    byte[] bData = SimpleBSON.Dump(packet);
+
+                    int len = bData.Length + 4;
+                    byte[] data = new byte[len];
+
+                    Array.Copy(BitConverter.GetBytes(len), data, sizeof(int));
+
+                    if (bData.Length > 0)
+                        Buffer.BlockCopy(bData, 0, data, 4, bData.Length);
+                    else
+                        return true; // huh? Treat it to be legal just incase anyway...
+
+                    try
+                    {
+                        ns.Write(data);
+                    }
+                    catch (IOException) { return false; }
                 }
-                packet["mc"] = outgoingPackets.Count;
-
-                outgoingPackets.Clear();
-
-                byte[] bData = SimpleBSON.Dump(packet);
-
-                int len = bData.Length + 4;
-                byte[] data = new byte[len];
-
-                Array.Copy(BitConverter.GetBytes(len), data, sizeof(int));
-
-                if (bData.Length > 0)
-                    Buffer.BlockCopy(bData, 0, data, 4, bData.Length);
-                else
-                    return true; // huh? Treat it to be legal just incase anyway...
-
-                try
-                {
-                    ns.Write(data);
-                }
-                catch (IOException) { return false; }
             }
             return true;
         }
@@ -143,17 +149,14 @@ namespace FeatherNet
             int flag = 0;
 
             if (timeout)
-                flag &= (int)FeatherEvent.Flags.TIMEOUT;
+                flag |= (int)FeatherEvent.Flags.TIMEOUT;
            
             ev.flags = flag;
             return ev;
         }
 
-        public void DisconnectLater()
-        {
-            this.disconnectLater = true;
-        }
-
+        public void Timeout() => this.timedOut = true;
+        public void DisconnectLater() => this.disconnectLater = true;
         public FeatherEvent Receive(byte[] buffer, int len)
         {
             // No message framing is done in server side, since requests are supposed to be small.
@@ -283,6 +286,7 @@ namespace FeatherNet
 
             foreach (FeatherClient fClient in clients)
             {
+                fClient.Flush();
                 var ev = fClient.CheckTimeout();
 
                 if (ev.type != FeatherEvent.Types.NONE)
@@ -295,53 +299,51 @@ namespace FeatherNet
                         continue; // dont handle this any further!
                 }
 
-                if (!fClient.Flush()) // Flush already existing packets.
-                {
-                    //events.Add(fClient.Disconnect());
-                    continue;
-                }
+                if (fClient.isTimedOut() || !fClient.GetClient().Connected)
+                    continue; // user supposed to time-out later, receiving any packets is not permitted.
 
-                var netStream = fClient.GetClient().GetStream();
-                
-                if (netStream.CanRead)
+                using (var netStream = fClient.GetClient().GetStream())
                 {
-                    do
+                    if (netStream.CanRead)
                     {
-                        int recv = 0;
-                        try
+                        do
                         {
-                            recv = netStream.Read(buffer, 0, FeatherDefaults.BUFFER_SIZE);
-                        }
-                        catch (IOException) 
-                        {
-                            // Don't straight up disconnect here, it may succeed reading something later on...
-                            break;
-                        }
-                        catch (ObjectDisposedException)
-                        {
-                            // Don't straight up disconnect here, it may succeed reading something later on...
-                            break;
-                        }
+                            int recv = 0;
+                            try
+                            {
+                                recv = netStream.Read(buffer, 0, FeatherDefaults.BUFFER_SIZE);
+                            }
+                            catch (IOException)
+                            {
+                                // Don't straight up disconnect here, it may succeed reading something later on...
+                                break;
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                                // Don't straight up disconnect here, it may succeed reading something later on...
+                                break;
+                            }
 
-                        if (recv == 0)
-                        {
+                            if (recv == 0)
+                            {
 #if DEBUG
-                            Console.WriteLine("Client requested disconnect.");
+                                Console.WriteLine("Client requested disconnect.");
 #endif
-                            events.Add(fClient.Disconnect());
-                            continue;
+                                events.Add(fClient.Disconnect());
+                                continue;
+                            }
+
+                            if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE) // generic bounds check
+                                continue;
+
+                            events.Add(fClient.Receive(buffer, recv));
+                            fClient.UpdateLastResponse();
                         }
-
-                        if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE) // generic bounds check
-                            continue;
-
-                        events.Add(fClient.Receive(buffer, recv));
-                        fClient.UpdateLastResponse();
+                        while (netStream.DataAvailable);
                     }
-                    while (netStream.DataAvailable);
                 }
 
-                events.Add(fClient.CheckTimeout());
+                events.Add(ev);
             }
 
             return events;
@@ -377,12 +379,16 @@ namespace FeatherNet
 
                         clients.Remove(ev.client);
                         ev.client.Free();
+
                         break;
 
                     default:
                         break;
                 }
             }
+
+            if (events.Length == 0)
+                Thread.Sleep(1);
 
             return events;
         }

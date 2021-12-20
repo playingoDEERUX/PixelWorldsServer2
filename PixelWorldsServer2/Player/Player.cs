@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Net.Sockets;
+using System.Numerics;
 using System.Text;
 using FeatherNet;
 using Kernys.Bson;
@@ -11,6 +12,7 @@ namespace PixelWorldsServer2
     class Player
     {
         public bool isInGame = false; // when the player has logon and is inside.
+
         public struct PlayerData
         {
             public Player player;
@@ -21,11 +23,13 @@ namespace PixelWorldsServer2
             public string Name;
             public string LastIP;
             public PlayerInventory Inventory;
+            public Vector4 Coords;
         }
 
         private PlayerData pData; // basically acts like a save, this is not the data that is assigned to the FeatherNet session itself.
         private FeatherClient fClient = null;
         private List<BSONObject> packets = new List<BSONObject>();
+        public World.WorldSession world = null;
         public Player(FeatherClient fClient = null)
         {
             this.fClient = fClient;

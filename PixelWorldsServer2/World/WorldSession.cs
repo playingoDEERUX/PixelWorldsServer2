@@ -20,6 +20,35 @@ namespace PixelWorldsServer2.World
         public int GetSizeX() => tiles.GetUpperBound(0) + 1;
         public int GetSizeY() => tiles.GetUpperBound(1) + 1;
 
+        public List<Player> Players => players;
+
+        public void AddPlayer(Player p)
+        {
+            if (!players.Contains(p))
+                players.Add(p);
+
+            p.world = this;
+        }
+
+        public void RemovePlayer(Player p)
+        {
+            if (players.Contains(p))
+                players.Remove(p);
+
+            p.world = null;
+        }
+
+        public void Broadcast(ref BSONObject bObj, params Player[] ignored) // ignored player can be used to ignore packet being sent to player itself.
+        {
+            foreach (var p in players)
+            {
+                if (ignored.Contains(p))
+                    continue;
+
+                p.Send(ref bObj);
+            }
+        }
+
         public WorldSession(PWServer pServer, string worldName = "")
         {
             if (worldName == "")
@@ -95,6 +124,14 @@ namespace PixelWorldsServer2.World
                     tiles[x, y].bg.id = 2;
                 }
             }
+        }
+
+        public WorldTile GetTile(int x, int y)
+        {
+            if (x >= GetSizeX() || y >= GetSizeY() || x < 0 || y < 0)
+                return null;
+
+            return tiles[x, y];
         }
 
         public BSONObject Serialize()
