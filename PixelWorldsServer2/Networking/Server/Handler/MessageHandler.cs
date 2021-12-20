@@ -81,9 +81,15 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
 
                     case "rOP": // request other players
+                        HandleRequestOtherPlayers(p, mObj);
+                        break;
+
                     case "rAI": // request AI (bots, etc.)??
+                        HandleRequestAI(p, mObj);
+                        break;
+
                     case "rAIp": // ??
-                        client.Send(mObj); // all todo
+                        HandleRequestAIp(p, mObj);
                         break;
 
                     case MsgLabels.Ident.MovePlayer:
@@ -176,8 +182,6 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void HandleGetWorld(Player p, BSONObject bObj)
         {
-            Console.WriteLine("Handling GetWorld... (todo)");
-
             string worldName = bObj["W"];
             var wmgr = pServer.GetWorldManager();
 
@@ -190,6 +194,22 @@ namespace PixelWorldsServer2.Networking.Server
             resp["W"] = Util.LZMAHelper.CompressLZMA(SimpleBSON.Dump(wObj));
 
             p.Send(ref resp);
+        }
+
+        public void HandleRequestOtherPlayers(Player p, BSONObject bObj)
+        {
+
+            p.Send(ref bObj);
+        }
+
+        public void HandleRequestAI(Player p, BSONObject bObj)
+        {
+            p.Send(ref bObj);
+        }
+
+        public void HandleRequestAIp(Player p, BSONObject bObj)
+        {
+            p.Send(ref bObj);
         }
 
         public void HandleSyncTime(FeatherClient client)

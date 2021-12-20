@@ -41,8 +41,19 @@ namespace PixelWorldsServer2.Networking.Server
             return fServer == null ? false : fServer.Start();
         }
 
+        public void Tick()
+        {
+            foreach (var p in players.Values)
+            {
+                if (p.isInGame)
+                    p.Tick();
+            }
+        }
+
         public void Host()
         {
+            Tick();
+
             foreach (var ev in fServer.Service())
             {
                 switch (ev.type)
@@ -83,12 +94,6 @@ namespace PixelWorldsServer2.Networking.Server
                     default:
                         break;
                 }
-            }
-
-            foreach (var p in players.Values)
-            {
-                if (p.isInGame)
-                    p.Tick();
             }
         }
 
