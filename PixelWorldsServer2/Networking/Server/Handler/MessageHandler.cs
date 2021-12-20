@@ -58,7 +58,7 @@ namespace PixelWorldsServer2.Networking.Server
                         metaID = client.metaObj[MsgLabels.MessageID];
                     }
 
-                    if (metaID != mID)
+                    /*if (metaID != mID)
                     {
                         client.metaObj[MsgLabels.MessageID] = mID;
                         client.metaObj["c"] = 0;
@@ -66,10 +66,9 @@ namespace PixelWorldsServer2.Networking.Server
                     else
                     {
                         client.metaObj["c"]++;
-                    }
-#if DEBUG
-                    Util.Log("Got message: " + mID);
-#endif
+                    }*/
+                    
+                   // Util.Log("Got message: " + mID);
 
                     switch (mID)
                     {
@@ -99,6 +98,26 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleRequestOtherPlayers(p, mObj);
                         break;
 
+                    case "RtP":
+                        HandleSpawnPlayer(p, mObj);
+                        break;
+
+                    case MsgLabels.Ident.LeaveWorld:
+                        HandleLeaveWorld(p, mObj);
+                        break;
+
+                    case "PSicU":
+                       if (p == null)
+                            break;
+
+                        bObj["U"] = p.Data.UserID;
+
+                        if (p.world != null)
+                            p.world.Broadcast(ref bObj, p);
+
+                        p.Ping();
+                        break;
+
                     case "rAI": // request AI (bots, etc.)??
                         HandleRequestAI(p, mObj);
                         break;
@@ -111,6 +130,16 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleMovePlayer(p, mObj);
                         break;
 
+                    case "HA":
+                        if (p != null)
+                        {
+                            bObj["U"] = p.Data.UserID;
+
+                            if (p.world != null)
+                                p.world.Broadcast(ref bObj);
+                        }
+                        break;
+
                     case MsgLabels.Ident.SetBlock:
                         HandleSetBlock(p, mObj);
                         break;
@@ -119,12 +148,15 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleHitBlock(p, mObj);
                         break;
 
-                    case "MWli":
-                        
-                        break;
-
                     case "A":
                         client.Send(mObj);
+                        break;
+
+                    case "GSb":
+                        break;
+
+                    case MsgLabels.Ident.SyncTime:
+                        HandleSyncTime(client);
                         break;
 
                     default:
@@ -172,6 +204,7 @@ namespace PixelWorldsServer2.Networking.Server
                 {
                     Console.WriteLine("Account is online already, notifying error...");
                     client.DisconnectLater();
+                    return;
                 }
             }
 
@@ -182,18 +215,25 @@ namespace PixelWorldsServer2.Networking.Server
             client.Send(bsObj);
         }
 
+        public void HandleWorldChatMessage(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+            bObj[MsgLabels.MessageID] = "WCM";
+            bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage(p.Data.Name, p.Data.UserID.ToString("X8"), "#" + p.world.WorldName, 0, bObj["msg"]);
+            p.world.Broadcast(ref bObj, p);
+        }
+
         public void HandleTryToJoinWorld(Player p, BSONObject bObj)
         {
-
             if (p == null)
-            {
-                Console.WriteLine("Player is null at TryToJoinWorld?!");
                 return;
-            }
 
-            int req = p.Client.metaObj["c"].int32Value;
-
-            Console.WriteLine("Req: " + req.ToString());
+            Console.WriteLine($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{this.pServer.players.Count} players online!]...");
 
             BSONObject resp = new BSONObject(MsgLabels.Ident.TryToJoinWorld);
             resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
@@ -224,6 +264,9 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void HandleGetWorld(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             if (p.world != null)
                 p.world.RemovePlayer(p);
 
@@ -242,19 +285,43 @@ namespace PixelWorldsServer2.Networking.Server
             p.Send(ref resp);
         }
 
+        public void HandleLeaveWorld(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+            BSONObject resp = new BSONObject("PL");
+            resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
+
+            p.world.Broadcast(ref resp, p);
+            
+            if (bObj != null)
+                p.Send(ref bObj);
+
+            p.world.RemovePlayer(p);
+
+            Console.WriteLine($"Player with UserID {p.Data.UserID} left the world!");
+        }
+
         public void HandleRequestOtherPlayers(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             if (p.world == null)
                 return;
 
             BSONObject pObj = new BSONObject("AnP");
             foreach (var player in p.world.Players)
             {
-                pObj["x"] = player.Data.Coords.X;
-                pObj["y"] = player.Data.Coords.Y;
-                pObj["t"] = Util.GetKukouriTime();
-                pObj["a"] = player.Data.Coords.Z;
-                pObj["d"] = player.Data.Coords.W;
+                pObj["x"] = player.Data.PosX;
+                pObj["y"] = player.Data.PosY;
+                pObj["t"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                pObj["a"] = player.Data.Anim;
+                pObj["d"] = player.Data.Dir;
                 List<int> spotsList = new List<int>();
                 //spotsList.AddRange(Enumerable.Repeat(0, 35));
 
@@ -291,16 +358,19 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void HandleSpawnPlayer(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             if (p.world == null)
                 return;
 
             BSONObject pObj = new BSONObject();
             pObj[MsgLabels.MessageID] = "AnP";
-            pObj["x"] = p.Data.Coords.X;
-            pObj["y"] = p.Data.Coords.Y;
-            pObj["t"] = Util.GetKukouriTime();
-            pObj["a"] = p.Data.Coords.Z;
-            pObj["d"] = p.Data.Coords.W;
+            pObj["x"] = p.Data.PosX;
+            pObj["y"] = p.Data.PosY;
+            pObj["t"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            pObj["a"] = p.Data.Anim;
+            pObj["d"] = p.Data.Dir;
             List<int> spotsList = new List<int>();
             //spotsList.AddRange(Enumerable.Repeat(0, 35));
 
@@ -330,20 +400,30 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["IsVIP"] = false;
 
             p.world.Broadcast(ref pObj, p);
+            p.Ping();
         }
 
         public void HandleRequestAI(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             p.Send(ref bObj);
         }
 
         public void HandleRequestAIp(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             p.Send(ref bObj);
         }
 
         public void HandleHitBlock(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             if (p.world == null)
                 return;
 
@@ -353,6 +433,7 @@ namespace PixelWorldsServer2.Networking.Server
             var tile = w.GetTile(x, y);
 
             BSONObject resp = new BSONObject("DB");
+            BSONObject ping = new BSONObject(MsgLabels.Ident.Ping);
            
             if (tile != null)
             {
@@ -374,6 +455,9 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void HandleSetBlock(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             if (p.world == null)
                 return;
 
@@ -414,11 +498,33 @@ namespace PixelWorldsServer2.Networking.Server
         }
         public void HandleMovePlayer(Player p, BSONObject bObj)
         {
+            if (p == null)
+                return;
+
             if (p.world == null)
                 return;
 
-            p.world.Broadcast(ref bObj, p);
-            p.Client.Send(new BSONObject(MsgLabels.Ident.Ping)); // ok well this is a hack to make the game dispatch packets instantly when in a world.
+            if (bObj.ContainsKey("x") &&
+                bObj.ContainsKey("y") &&
+                bObj.ContainsKey("a") &&
+                bObj.ContainsKey("d") &&
+                bObj.ContainsKey("t"))
+
+            {
+                p.Data.PosX = bObj["x"].doubleValue;
+                p.Data.PosY = bObj["y"].doubleValue;
+
+                p.Data.Anim = bObj["a"];
+                p.Data.Dir = bObj["d"];
+                bObj["U"] = p.Data.UserID.ToString("X8");
+
+                if (bObj.ContainsKey("tp"))
+                    bObj.Remove("tp");
+
+                p.world.Broadcast(ref bObj, p);
+            }
+
+            p.Ping();
         }
 
         public void HandleSyncTime(FeatherClient client)

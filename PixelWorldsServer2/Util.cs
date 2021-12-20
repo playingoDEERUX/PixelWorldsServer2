@@ -5,11 +5,24 @@ using System.IO;
 using Kernys.Bson;
 using System.Linq;
 using SevenZip;
+using PixelWorldsServer2.DataManagement;
 
 namespace PixelWorldsServer2
 {
     public class Util
     {
+        public static BSONObject CreateChatMessage(string nickname, string userID, string channel, int channelIndex, string message)
+        {
+            BSONObject bObj = new BSONObject();
+            bObj[MsgLabels.ChatMessage.Nickname] = nickname;
+            bObj[MsgLabels.ChatMessage.UserID] = userID;
+            bObj[MsgLabels.ChatMessage.Channel] = channel;
+            bObj["channelIndex"] = channelIndex;
+            bObj[MsgLabels.ChatMessage.Message] = message;
+            bObj[MsgLabels.ChatMessage.ChatTime] = DateTime.UtcNow;
+            return bObj;
+        }
+
         public static void Log(string text, bool save = false)
         {
             string log = "[SERVER at " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "]: " + text;

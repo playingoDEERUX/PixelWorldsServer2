@@ -32,8 +32,16 @@ namespace PixelWorldsServer2.World
 
         public void RemovePlayer(Player p)
         {
-            if (players.Contains(p))
-                players.Remove(p);
+            List<Player> removes = new List<Player>();
+
+            foreach (Player player in players)
+            {
+                if (player.Data.UserID == p.Data.UserID)
+                    removes.Add(player);
+            }
+
+            foreach (Player rem in removes)
+                players.Remove(rem);
 
             p.world = null;
         }

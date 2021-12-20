@@ -23,7 +23,8 @@ namespace PixelWorldsServer2
             public string Name;
             public string LastIP;
             public PlayerInventory Inventory;
-            public Vector4 Coords;
+            public double PosX, PosY;
+            public int Anim, Dir;
         }
 
         private PlayerData pData; // basically acts like a save, this is not the data that is assigned to the FeatherNet session itself.
@@ -79,5 +80,11 @@ namespace PixelWorldsServer2
 
         public void SetClient(FeatherClient fClient) => this.fClient = fClient;
         public void Send(ref BSONObject packet) => packets.Add(packet);
+
+        public void Ping()
+        {
+            BSONObject p = new BSONObject("p");
+            Send(ref p);
+        }
     }
 }

@@ -79,40 +79,40 @@ namespace FeatherNet
             if (!client.Connected)
                 return false;
 
-            using (var ns = client.GetStream())
+            var ns = client.GetStream();
+            if (ns.CanWrite && outgoingPackets.Count > 0)
             {
+                // Serialize all bson objects into a single one:
 
-                if (ns.CanWrite && outgoingPackets.Count > 0)
+                BSONObject packet = new BSONObject();
+
+                for (int i = 0; i < outgoingPackets.Count; i++)
                 {
-                    // Serialize all bson objects into a single one:
+                    packet[$"m{i}"] = outgoingPackets[i];
+                }
+                packet["mc"] = outgoingPackets.Count;
 
-                    BSONObject packet = new BSONObject();
+                outgoingPackets.Clear();
 
-                    for (int i = 0; i < outgoingPackets.Count; i++)
-                    {
-                        packet[$"m{i}"] = outgoingPackets[i];
-                    }
-                    packet["mc"] = outgoingPackets.Count;
+                byte[] bData = SimpleBSON.Dump(packet);
 
-                    outgoingPackets.Clear();
+                int len = bData.Length + 4;
+                byte[] data = new byte[len];
 
-                    byte[] bData = SimpleBSON.Dump(packet);
+                Array.Copy(BitConverter.GetBytes(len), data, sizeof(int));
 
-                    int len = bData.Length + 4;
-                    byte[] data = new byte[len];
+                if (bData.Length > 0)
+                    Buffer.BlockCopy(bData, 0, data, 4, bData.Length);
+                else
+                    return true; // huh? Treat it to be legal just incase anyway...
 
-                    Array.Copy(BitConverter.GetBytes(len), data, sizeof(int));
-
-                    if (bData.Length > 0)
-                        Buffer.BlockCopy(bData, 0, data, 4, bData.Length);
-                    else
-                        return true; // huh? Treat it to be legal just incase anyway...
-
-                    try
-                    {
-                        ns.Write(data);
-                    }
-                    catch (IOException) { return false; }
+                try
+                {
+                    ns.Write(data);
+                }
+                catch (IOException) 
+                {
+                    return false; 
                 }
             }
             return true;
@@ -302,45 +302,44 @@ namespace FeatherNet
                 if (fClient.isTimedOut() || !fClient.GetClient().Connected)
                     continue; // user supposed to time-out later, receiving any packets is not permitted.
 
-                using (var netStream = fClient.GetClient().GetStream())
+                var client = fClient.GetClient();
+                var netStream = client.GetStream();
+                if (netStream.CanRead)
                 {
-                    if (netStream.CanRead)
+                    do
                     {
-                        do
+                        int recv = 0;
+                        try
                         {
-                            int recv = 0;
-                            try
-                            {
-                                recv = netStream.Read(buffer, 0, FeatherDefaults.BUFFER_SIZE);
-                            }
-                            catch (IOException)
-                            {
-                                // Don't straight up disconnect here, it may succeed reading something later on...
-                                break;
-                            }
-                            catch (ObjectDisposedException)
-                            {
-                                // Don't straight up disconnect here, it may succeed reading something later on...
-                                break;
-                            }
-
-                            if (recv == 0)
-                            {
-#if DEBUG
-                                Console.WriteLine("Client requested disconnect.");
-#endif
-                                events.Add(fClient.Disconnect());
-                                continue;
-                            }
-
-                            if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE) // generic bounds check
-                                continue;
-
-                            events.Add(fClient.Receive(buffer, recv));
-                            fClient.UpdateLastResponse();
+                            recv = netStream.Read(buffer, 0, FeatherDefaults.BUFFER_SIZE);
                         }
-                        while (netStream.DataAvailable);
+                        catch (IOException) 
+                        {
+                            // Don't straight up disconnect here, it may succeed reading something later on...
+                            break;
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // Don't straight up disconnect here, it may succeed reading something later on...
+                            break;
+                        }
+
+                        if (recv == 0)
+                        {
+#if DEBUG
+                            Console.WriteLine("Client requested disconnect.");
+#endif
+                            events.Add(fClient.Disconnect());
+                            continue;
+                        }
+
+                        if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE) // generic bounds check
+                            continue;
+
+                        events.Add(fClient.Receive(buffer, recv));
+                        fClient.UpdateLastResponse();
                     }
+                    while (netStream.DataAvailable);
                 }
 
                 events.Add(ev);

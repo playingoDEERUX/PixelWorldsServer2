@@ -109,6 +109,8 @@ namespace PixelWorldsServer2.Networking.Server
 
             if (players.ContainsKey(pData.UserID))
             {
+
+
                 // depends on whether we were the last instance to disconnect with that userID:
                 // have to this as the player might try to relogon onto the same session.
                 ushort instances = 0;
@@ -122,13 +124,17 @@ namespace PixelWorldsServer2.Networking.Server
                 }
 
                 Player p = players[pData.UserID];
+                if (p.world != null)
+                {
+                    GetMessageHandler().HandleLeaveWorld(p, null);
+                }
+
                 p.isInGame = instances > 0;
 
                 if (!p.isInGame)
                 {
-#if DEBUG
                     Console.WriteLine("Player nowhere ingame anymore, unregistering session...");
-#endif
+
                     p.SetClient(null);
                 }
             }
