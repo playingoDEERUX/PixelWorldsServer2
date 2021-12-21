@@ -24,6 +24,19 @@ namespace PixelWorldsServer2.Networking.Server
         public WorldManager GetWorldManager() => worldManager;
         public AccountHelper GetAccountHelper() => accountHelper;
 
+        public Player[] GetPlayersIngame()
+        {
+            List<Player> players = new List<Player>();
+
+            foreach (Player player in players)
+            {
+                if (player.isInGame)
+                    players.Add(player);
+            }
+
+            return players.ToArray();
+        }
+
         [Obsolete]
         public PWServer(int port = 10001)
         {
@@ -52,9 +65,8 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void Host()
         {
-            Tick();
-
-            foreach (var ev in fServer.Service())
+            var evs = fServer.Service(16);
+            foreach (var ev in evs)
             {
                 switch (ev.type)
                 {
@@ -95,6 +107,8 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
                 }
             }
+
+            Tick();
         }
 
         private void onDisconnect(FeatherClient client, int flags)

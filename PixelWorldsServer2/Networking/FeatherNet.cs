@@ -7,6 +7,7 @@ using System.IO;
 using Kernys.Bson;
 using System.Linq;
 using System.Threading;
+using PixelWorldsServer2.DataManagement;
 
 namespace FeatherNet
 {
@@ -25,7 +26,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 500; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 16; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MIN_TRANSACTION_SIZE = 4;
@@ -39,9 +40,25 @@ namespace FeatherNet
         public bool isDisconnecting() => disconnectLater;
         public bool isTimedOut() => timedOut;
 
+        public bool isConnected() => GetClient().Connected;
+
         public bool needsPing()
         {
-            return FeatherUtil.GetTimeMs() > lastResponse + (FeatherDefaults.PING_CLOCK_MS * pingMul);
+            return !alreadyPinged() && FeatherUtil.GetTimeMs() > lastResponse + (FeatherDefaults.PING_CLOCK_MS * pingMul);
+        }
+
+        private bool alreadyPinged()
+        {
+            foreach (var bson in outgoingPackets)
+            {
+                if (!bson.Contains(MsgLabels.MessageID))
+                    continue;
+
+                if (bson[MsgLabels.MessageID] == MsgLabels.Ident.Ping)
+                    return true;
+            }
+
+            return false;
         }
 
         public BSONObject metaObj = new BSONObject(); // reserved.
@@ -76,7 +93,7 @@ namespace FeatherNet
             if (client == null)
                 return false;
 
-            if (!client.Connected)
+            if (!isConnected())
                 return false;
 
             var ns = client.GetStream();
@@ -109,6 +126,7 @@ namespace FeatherNet
                 try
                 {
                     ns.Write(data);
+                    ns.Flush();
                 }
                 catch (IOException) 
                 {
@@ -120,7 +138,8 @@ namespace FeatherNet
 
         public void Send(BSONObject bObj)
         {
-            outgoingPackets.Add(bObj);
+            if (this.isConnected())
+                outgoingPackets.Add(bObj);
         }
 
         public void Free()
@@ -299,11 +318,12 @@ namespace FeatherNet
                         continue; // dont handle this any further!
                 }
 
-                if (fClient.isTimedOut() || !fClient.GetClient().Connected)
+                if (fClient.isTimedOut() || !fClient.isConnected())
                     continue; // user supposed to time-out later, receiving any packets is not permitted.
 
                 var client = fClient.GetClient();
                 var netStream = client.GetStream();
+                
                 if (netStream.CanRead)
                 {
                     do
@@ -339,7 +359,7 @@ namespace FeatherNet
                         events.Add(fClient.Receive(buffer, recv));
                         fClient.UpdateLastResponse();
                     }
-                    while (netStream.DataAvailable);
+                    while (netStream.DataAvailable && fClient.isConnected());
                 }
 
                 events.Add(ev);
@@ -359,8 +379,6 @@ namespace FeatherNet
 
         public FeatherEvent[] Service(int timeout = 1)
         {
-            this.GetListener().Server.ReceiveTimeout = timeout; // Refresh the receivetimeout so that it can be dynamically adjusted.
-
             FeatherEvent[] events = DispatchEvents();
             foreach (FeatherEvent ev in events)
             {
@@ -387,7 +405,10 @@ namespace FeatherNet
             }
 
             if (events.Length == 0)
-                Thread.Sleep(1);
+            {
+                while (GetListener().Server.Poll(timeout * 1000, SelectMode.SelectRead))
+                    Service(timeout);
+            }
 
             return events;
         }

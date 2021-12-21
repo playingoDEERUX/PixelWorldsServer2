@@ -83,6 +83,9 @@ namespace PixelWorldsServer2
 
         public void Ping()
         {
+            if (Client.needsPing())
+                return; // its gonna receive a ping anyway
+
             BSONObject p = new BSONObject("p");
             Send(ref p);
         }

@@ -66,8 +66,16 @@ namespace PixelWorldsServer2
             {
                 Util.Log($"Pixel Worlds Server has been started. Hosting now at port {pwServer.Port}!");
 
-                while (pwServer.GetServer() != null)
-                    pwServer.Host();
+                try
+                {
+                    while (pwServer.GetServer() != null)
+                        pwServer.Host();
+                }
+                catch (Exception ex)
+                {
+                    Util.Log("SERVER CRASH, ex: " + ex.Message, true);
+                    Util.Log("Call stack: " + ex.StackTrace);
+                }
             }
             else
             {

@@ -68,7 +68,7 @@ namespace PixelWorldsServer2.Networking.Server
                         client.metaObj["c"]++;
                     }*/
                     
-                   // Util.Log("Got message: " + mID);
+                    //Util.Log("Got message: " + mID);
 
                     switch (mID)
                     {
@@ -148,6 +148,10 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleHitBlock(p, mObj);
                         break;
 
+                    case MsgLabels.Ident.HitBackgroundBlock:
+                        HandleHitBackground(p, mObj);
+                        break;
+
                     case "A":
                         client.Send(mObj);
                         break;
@@ -160,11 +164,11 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
 
                     default:
-                        client.Send(new BSONObject(MsgLabels.Ident.Ping));
                         break;
 
                     }
                 }
+            client.Send(new BSONObject(MsgLabels.Ident.Ping));
 #if RELEASE
             }
         
@@ -233,7 +237,7 @@ namespace PixelWorldsServer2.Networking.Server
             if (p == null)
                 return;
 
-            Console.WriteLine($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{this.pServer.players.Count} players online!]...");
+            Console.WriteLine($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{pServer.GetPlayersIngame().Length} players online!]...");
 
             BSONObject resp = new BSONObject(MsgLabels.Ident.TryToJoinWorld);
             resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
@@ -260,6 +264,7 @@ namespace PixelWorldsServer2.Networking.Server
             }
 
             p.Send(ref resp);
+            p.Ping();
         }
 
         public void HandleGetWorld(Player p, BSONObject bObj)
@@ -268,7 +273,9 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             if (p.world != null)
-                p.world.RemovePlayer(p);
+            {
+                HandleLeaveWorld(p, null);
+            }
 
             string worldName = bObj["W"];
             var wmgr = pServer.GetWorldManager();
@@ -317,6 +324,9 @@ namespace PixelWorldsServer2.Networking.Server
             BSONObject pObj = new BSONObject("AnP");
             foreach (var player in p.world.Players)
             {
+                if (player == p)
+                    continue;
+
                 pObj["x"] = player.Data.PosX;
                 pObj["y"] = player.Data.PosY;
                 pObj["t"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -418,6 +428,44 @@ namespace PixelWorldsServer2.Networking.Server
 
             p.Send(ref bObj);
         }
+        public void HandleHitBackground(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+            var w = p.world;
+
+            int x = bObj["x"], y = bObj["y"];
+            var tile = w.GetTile(x, y);
+
+            BSONObject resp = new BSONObject("DB");
+   
+            if (tile != null)
+            {
+                if (tile.bg.id <= 0)
+                    return;
+
+                if (++tile.bg.damage > 3)
+                {
+                    resp[MsgLabels.DestroyBlockBlockType] = (int)tile.bg.id;
+                    resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
+                    resp["x"] = x;
+                    resp["y"] = y;
+                    w.Broadcast(ref resp);
+
+                    tile.bg.id = 0;
+                }
+            }
+        }
 
         public void HandleHitBlock(Player p, BSONObject bObj)
         {
@@ -433,8 +481,7 @@ namespace PixelWorldsServer2.Networking.Server
             var tile = w.GetTile(x, y);
 
             BSONObject resp = new BSONObject("DB");
-            BSONObject ping = new BSONObject(MsgLabels.Ident.Ping);
-           
+
             if (tile != null)
             {
                 if (tile.fg.id <= 0)
