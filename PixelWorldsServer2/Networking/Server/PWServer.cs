@@ -27,15 +27,15 @@ namespace PixelWorldsServer2.Networking.Server
 
         public Player[] GetPlayersIngame()
         {
-            List<Player> players = new List<Player>();
+            List<Player> ingamePlayers = new List<Player>();
 
-            foreach (Player player in players)
+            foreach (Player player in players.Values)
             {
                 if (player.isInGame)
-                    players.Add(player);
+                    ingamePlayers.Add(player);
             }
 
-            return players.ToArray();
+            return ingamePlayers.ToArray();
         }
 
         [Obsolete]
