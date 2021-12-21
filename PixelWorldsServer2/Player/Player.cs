@@ -68,7 +68,7 @@ namespace PixelWorldsServer2
 
         public void Tick()
         {
-            if (fClient != null)
+            if (Client != null)
             {
                 while (packets.Count > 0)
                 {

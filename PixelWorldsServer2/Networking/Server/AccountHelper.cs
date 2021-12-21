@@ -53,7 +53,7 @@ namespace PixelWorldsServer2.Networking.Server
             cmd.Parameters.AddWithValue("@Token", cogToken);
             cmd.Parameters.AddWithValue("@IP", ip);
 
-            string name = "Subject_TODONAME"; // Name generation soon...
+            string name = "Subject_" + Util.RandomString(8); // Name generation soon...
             cmd.Parameters.AddWithValue("@Name", name);
 
             if (sql.PreparedQuery(cmd) > 0)

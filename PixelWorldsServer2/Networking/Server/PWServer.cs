@@ -100,6 +100,8 @@ namespace PixelWorldsServer2.Networking.Server
 
                             if (bObj != null)
                                 onReceive(ev.client, bObj, ev.flags);
+
+                            ev.client.Flush();
                         }
                         break;
 
@@ -167,7 +169,7 @@ namespace PixelWorldsServer2.Networking.Server
             if (client == null)
                 return;
 
-            
+            client.StartReading();
         }
     }
 }

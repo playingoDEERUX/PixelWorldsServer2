@@ -8,6 +8,7 @@ using Kernys.Bson;
 using System.Linq;
 using System.Threading;
 using PixelWorldsServer2.DataManagement;
+using System.Threading.Tasks;
 
 namespace FeatherNet
 {
@@ -39,8 +40,8 @@ namespace FeatherNet
         private bool timedOut = false;
         public bool isDisconnecting() => disconnectLater;
         public bool isTimedOut() => timedOut;
-
         public bool isConnected() => GetClient().Connected;
+        public EventWaitHandle syncHandle = new AutoResetEvent(false);
 
         public bool needsPing()
         {
@@ -68,7 +69,46 @@ namespace FeatherNet
         private object host = null;
         public object data = null; // Freely applicable data that developer may or may not use.
         private List<BSONObject> outgoingPackets = new List<BSONObject>();
+        public List<FeatherEvent> incomingEvents = new List<FeatherEvent>();
+        private byte[] recvBuf = new byte[FeatherDefaults.BUFFER_SIZE];
 
+        private void OnEndRead(IAsyncResult i)
+        {
+            try
+            {
+                var ns = client.GetStream();
+                int recv = ns.EndRead(i);
+
+                if (recv < 0 || recv >= FeatherDefaults.BUFFER_SIZE)
+                {
+                    incomingEvents.Add(Disconnect());
+                    return;
+                }
+
+                if (recv > 0)
+                {
+                    incomingEvents.Add(Receive(recvBuf, recv));
+                }
+
+                ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, null);
+            }
+            catch (ObjectDisposedException) { }
+            catch (IOException) { }
+            catch (InvalidOperationException) { }
+            catch (SocketException) { }
+        }
+        public void StartReading()
+        {
+            try
+            {
+                var ns = client.GetStream();
+                ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, null);
+            }
+            catch (ObjectDisposedException) { }
+            catch (IOException) { }
+            catch (InvalidOperationException) { }
+            catch (SocketException) { }
+        }
         public string GetIPString()
         {
             // Return the IPv4-Address in string format:
@@ -93,7 +133,7 @@ namespace FeatherNet
             if (client == null)
                 return false;
 
-            if (!isConnected())
+            if (!client.Connected)
                 return false;
 
             var ns = client.GetStream();
@@ -125,7 +165,7 @@ namespace FeatherNet
 
                 try
                 {
-                    ns.Write(data);
+                    ns.Write(data, 0, data.Length);
                     ns.Flush();
                 }
                 catch (IOException) 
@@ -289,7 +329,7 @@ namespace FeatherNet
                 FeatherEvent ev = new FeatherEvent();
                 ev.client = new FeatherClient(listener.AcceptTcpClient(), this);
                 ev.type = FeatherEvent.Types.CONNECT;
-               
+                
                 events.Add(ev);
             }
 
@@ -297,6 +337,7 @@ namespace FeatherNet
         }
 
         // CheckClients checks for incoming packets, disconnections and perhaps misc. things:
+
         private List<FeatherEvent> CheckClients()
         {
             List<FeatherEvent> events = new List<FeatherEvent>();
@@ -305,61 +346,27 @@ namespace FeatherNet
 
             foreach (FeatherClient fClient in clients)
             {
-                fClient.Flush();
                 var ev = fClient.CheckTimeout();
 
                 if (ev.type != FeatherEvent.Types.NONE)
                 {
-                    events.Add(ev);
-
                     if (ev.type == FeatherEvent.Types.PING_NOW)
                         fClient.pingMul++;
                     else if (ev.type == FeatherEvent.Types.DISCONNECT)
+                    {
+                        events.Add(ev);
                         continue; // dont handle this any further!
+                    }
                 }
 
                 if (fClient.isTimedOut() || !fClient.isConnected())
                     continue; // user supposed to time-out later, receiving any packets is not permitted.
 
-                var client = fClient.GetClient();
-                var netStream = client.GetStream();
-                
-                if (netStream.CanRead)
+                // see what events have been collected up:
+                while (fClient.incomingEvents.Count > 0)
                 {
-                    do
-                    {
-                        int recv = 0;
-                        try
-                        {
-                            recv = netStream.Read(buffer, 0, FeatherDefaults.BUFFER_SIZE);
-                        }
-                        catch (IOException) 
-                        {
-                            // Don't straight up disconnect here, it may succeed reading something later on...
-                            break;
-                        }
-                        catch (ObjectDisposedException)
-                        {
-                            // Don't straight up disconnect here, it may succeed reading something later on...
-                            break;
-                        }
-
-                        if (recv == 0)
-                        {
-#if DEBUG
-                            Console.WriteLine("Client requested disconnect.");
-#endif
-                            events.Add(fClient.Disconnect());
-                            continue;
-                        }
-
-                        if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE) // generic bounds check
-                            continue;
-
-                        events.Add(fClient.Receive(buffer, recv));
-                        fClient.UpdateLastResponse();
-                    }
-                    while (netStream.DataAvailable && fClient.isConnected());
+                    events.Add(fClient.incomingEvents[0]);
+                    fClient.incomingEvents.RemoveAt(0);
                 }
 
                 events.Add(ev);
@@ -399,15 +406,13 @@ namespace FeatherNet
 
                         break;
 
+                    case FeatherEvent.Types.RECEIVE:
+                        ev.client.UpdateLastResponse();
+                        break;
+
                     default:
                         break;
                 }
-            }
-
-            if (events.Length == 0)
-            {
-                while (GetListener().Server.Poll(timeout * 1000, SelectMode.SelectRead))
-                    Service(timeout);
             }
 
             return events;

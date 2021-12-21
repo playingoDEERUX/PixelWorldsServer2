@@ -94,6 +94,18 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleGetWorld(p, mObj);
                         break;
 
+                    case "WCM":
+                        HandleWorldChatMessage(p, mObj);
+                        break;
+
+                    case "MWli":
+                        HandleMoreWorldInfo(p, mObj);
+                        break;
+
+                    case "PSicU":
+                        HandlePlayerStatusChange(p, mObj);
+                        break;
+
                     case "rOP": // request other players
                         HandleRequestOtherPlayers(p, mObj);
                         break;
@@ -104,18 +116,6 @@ namespace PixelWorldsServer2.Networking.Server
 
                     case MsgLabels.Ident.LeaveWorld:
                         HandleLeaveWorld(p, mObj);
-                        break;
-
-                    case "PSicU":
-                       if (p == null)
-                            break;
-
-                        bObj["U"] = p.Data.UserID;
-
-                        if (p.world != null)
-                            p.world.Broadcast(ref bObj, p);
-
-                        p.Ping();
                         break;
 
                     case "rAI": // request AI (bots, etc.)??
@@ -229,6 +229,30 @@ namespace PixelWorldsServer2.Networking.Server
 
             bObj[MsgLabels.MessageID] = "WCM";
             bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage(p.Data.Name, p.Data.UserID.ToString("X8"), "#" + p.world.WorldName, 0, bObj["msg"]);
+            p.world.Broadcast(ref bObj, p);
+        }
+
+        public void HandleMoreWorldInfo(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            var w = pServer.GetWorldManager().GetByName(bObj["WN"]);
+
+            bObj[MsgLabels.Count] = w == null ? 0 : w.Players.Count;
+            p.Send(ref bObj);
+        }
+
+        public void HandlePlayerStatusChange(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+
+            bObj["U"] = p.Data.UserID;
             p.world.Broadcast(ref bObj, p);
         }
 
@@ -454,7 +478,7 @@ namespace PixelWorldsServer2.Networking.Server
                 if (tile.bg.id <= 0)
                     return;
 
-                if (++tile.bg.damage > 3)
+                if (++tile.bg.damage > 2)
                 {
                     resp[MsgLabels.DestroyBlockBlockType] = (int)tile.bg.id;
                     resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
@@ -487,7 +511,7 @@ namespace PixelWorldsServer2.Networking.Server
                 if (tile.fg.id <= 0)
                     return;
 
-                if (++tile.fg.damage > 3)
+                if (++tile.fg.damage > 2)
                 {
                     resp[MsgLabels.DestroyBlockBlockType] = (int)tile.fg.id;
                     resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");

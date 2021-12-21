@@ -23,6 +23,19 @@ namespace PixelWorldsServer2
             return bObj;
         }
 
+        public static string RandomString(int length)
+        {
+            Random rng = new Random();
+            string allowedChars = "ABCDEFGHJKLMNOPQRSTUVWXYZ0123456789";
+
+            char[] letters = new char[length];
+            for (int i = 0; i < length; i++)
+            {
+                letters[i] = allowedChars[rng.Next(allowedChars.Length)];
+            }
+            return new string(letters);
+        }
+
         public static void Log(string text, bool save = false)
         {
             string log = "[SERVER at " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "]: " + text;

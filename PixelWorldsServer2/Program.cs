@@ -73,8 +73,8 @@ namespace PixelWorldsServer2
                 }
                 catch (Exception ex)
                 {
-                    Util.Log("SERVER CRASH, ex: " + ex.Message, true);
-                    Util.Log("Call stack: " + ex.StackTrace);
+                   // Util.Log("ex: " + ex.Message, true);
+                    //Util.Log("Call stack: " + ex.StackTrace);
                 }
             }
             else
