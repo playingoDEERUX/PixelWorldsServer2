@@ -5,6 +5,7 @@ using System.Text;
 using FeatherNet;
 using Kernys.Bson;
 using PixelWorldsServer2.Database;
+using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.World;
 
 namespace PixelWorldsServer2.Networking.Server
@@ -79,7 +80,7 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
 
                     case FeatherEvent.Types.PING_NOW:
-                        ev.client.Send(new BSONObject("p"));
+                        //ev.client.Send(new BSONObject("p")); (Not required for PW). Other services may need to implement this on their own.
                         break;
 
                     case FeatherEvent.Types.RECEIVE:
@@ -92,9 +93,7 @@ namespace PixelWorldsServer2.Networking.Server
                             }
                             catch (Exception ex) 
                             {
-#if DEBUG
                                 Util.Log(ex.Message);
-#endif
                                 break; 
                             }
 
@@ -160,6 +159,7 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             msgHandler.ProcessBSONPacket(client, packet);
+            client.Send(new BSONObject(MsgLabels.Ident.Ping));
         }
 
         private void onConnect(FeatherClient client, int flags)

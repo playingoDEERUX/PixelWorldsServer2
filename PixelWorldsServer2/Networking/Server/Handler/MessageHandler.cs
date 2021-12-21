@@ -168,7 +168,6 @@ namespace PixelWorldsServer2.Networking.Server
 
                     }
                 }
-            client.Send(new BSONObject(MsgLabels.Ident.Ping));
 #if RELEASE
             }
         
