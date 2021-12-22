@@ -11,7 +11,7 @@ using PixelWorldsServer2.World;
 
 namespace PixelWorldsServer2.Networking.Server
 {
-    class MessageHandler
+    public class MessageHandler
     {
         private PWServer pServer = null;
 
@@ -136,7 +136,7 @@ namespace PixelWorldsServer2.Networking.Server
                             bObj["U"] = p.Data.UserID;
 
                             if (p.world != null)
-                                p.world.Broadcast(ref bObj);
+                                p.world.Broadcast(ref bObj, p);
                         }
                         break;
 
@@ -168,7 +168,8 @@ namespace PixelWorldsServer2.Networking.Server
 
                     }
                 }
-            client.Send(new BSONObject(MsgLabels.Ident.Ping));
+
+                client.Send(new BSONObject(MsgLabels.Ident.Ping));
 #if RELEASE
             }
         
@@ -180,7 +181,7 @@ namespace PixelWorldsServer2.Networking.Server
 #endif
         }
 
-
+        private byte[] playerDataTemp = File.ReadAllBytes("player.dat").Skip(4).ToArray(); // template for playerdata, too painful to reverse rn so I am just gonna modify whats needed.
         public void HandlePlayerLogon(FeatherClient client, BSONObject bObj)
         {
 #if DEBUG
@@ -190,7 +191,7 @@ namespace PixelWorldsServer2.Networking.Server
             string cogID = bObj[MsgLabels.CognitoId];
             string cogToken = bObj[MsgLabels.CognitoToken];
 
-            var bsObj = SimpleBSON.Load(File.ReadAllBytes("player.dat").Skip(4).ToArray())["m0"] as BSONObject;
+            var resp = SimpleBSON.Load(playerDataTemp)["m0"] as BSONObject;
             var accHelper = pServer.GetAccountHelper();
 
             Player p = accHelper.LoginPlayer(cogID, cogToken, client.GetIPString());
@@ -212,11 +213,59 @@ namespace PixelWorldsServer2.Networking.Server
                 }
             }
 
+            BSONObject pd = new BSONObject("pD");
+            pd[MsgLabels.PlayerData.ByteCoinAmount] = p.Data.Coins;
+            pd[MsgLabels.PlayerData.GemsAmount] = p.Data.Gems;
+            pd[MsgLabels.PlayerData.Username] = p.Data.Name.ToUpper();
+            pd[MsgLabels.PlayerData.PlayerOPStatus] = 2;
+            pd[MsgLabels.PlayerData.InventorySlots] = 400;
+
+            if (p.Data.Inventory.Items.Count == 0)
+            {
+                p.Data.Inventory.Items.Add(new InventoryItem(605, 0, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(869, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(870, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(871, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(890, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(1018, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(1019, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(4267, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(4268, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(4269, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(4093, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(2152, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(1412, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.Items.Add(new InventoryItem(3175, (short)ItemFlags.IS_WEARABLE, 9999));
+            }
+
+            using (var stream = new MemoryStream())
+            {
+                using (var bw = new BinaryWriter(stream))
+                {
+                    foreach (var item in p.Data.Inventory.Items)
+                    {
+                        bw.Write(item.itemID);
+                        bw.Write(item.flags);
+                        bw.Write(item.amount);
+                    }
+                }
+                pd["inv"] = stream.ToArray();
+            }
+
+            pd["tutorialState"] = 3;
+            //pd["tutorialQuestCompleteState"] = 1;
+            resp["rUN"] = p.Data.Name;
+            resp["pD"] = SimpleBSON.Dump(pd);
+            resp["U"] = p.Data.UserID.ToString("X8");
+            resp["Wo"] = "PIXELSTATION";
+
             p.SetClient(client); // override client...
             client.data = p.Data;
             p.isInGame = true;
 
-            client.Send(bsObj);
+            client.Send(resp);
         }
 
         public void HandleWorldChatMessage(Player p, BSONObject bObj)
@@ -288,7 +337,6 @@ namespace PixelWorldsServer2.Networking.Server
             }
 
             p.Send(ref resp);
-            p.Ping();
         }
 
         public void HandleGetWorld(Player p, BSONObject bObj)
@@ -304,7 +352,7 @@ namespace PixelWorldsServer2.Networking.Server
             string worldName = bObj["W"];
             var wmgr = pServer.GetWorldManager();
 
-            WorldSession world = wmgr.GetByName(worldName, false);
+            WorldSession world = wmgr.GetByName(worldName, true);
             world.AddPlayer(p);
 
             BSONObject resp = new BSONObject();
@@ -434,7 +482,6 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["IsVIP"] = false;
 
             p.world.Broadcast(ref pObj, p);
-            p.Ping();
         }
 
         public void HandleRequestAI(Player p, BSONObject bObj)
@@ -536,7 +583,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             int x = bObj["x"], y = bObj["y"];
             short blockType = (short)bObj["BlockType"];
-            ItemDB.Item it = ItemDB.GetByID(blockType);
+            Item it = ItemDB.GetByID(blockType);
            
             bObj["U"] = p.Data.UserID;
 
@@ -594,8 +641,6 @@ namespace PixelWorldsServer2.Networking.Server
 
                 p.world.Broadcast(ref bObj, p);
             }
-
-            p.Ping();
         }
 
         public void HandleSyncTime(FeatherClient client)

@@ -9,7 +9,7 @@ using Kernys.Bson;
 
 namespace PixelWorldsServer2
 {
-    class Player
+    public class Player
     {
         public bool isInGame = false; // when the player has logon and is inside.
 
@@ -45,6 +45,7 @@ namespace PixelWorldsServer2
                 pData.Token = "";
                 pData.Name = "";
                 pData.LastIP = "0.0.0.0";
+                pData.Inventory = new PlayerInventory();
                 
                 fClient.data = pData; // interlink
             }
@@ -59,8 +60,8 @@ namespace PixelWorldsServer2
             pData.LastIP = (string)reader["IP"];
             pData.CognitoID = (string)reader["CognitoID"];
             pData.Token = (string)reader["Token"];
+            pData.Inventory = new PlayerInventory(); // todo load inv from sql
         }
-
 
         public FeatherClient Client { get { return fClient; } }
         public ref dynamic ClientData { get { return ref fClient.data; } }

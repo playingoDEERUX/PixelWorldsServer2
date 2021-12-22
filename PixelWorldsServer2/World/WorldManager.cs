@@ -5,7 +5,7 @@ using PixelWorldsServer2.Networking.Server;
 
 namespace PixelWorldsServer2.World
 {
-    class WorldManager
+    public class WorldManager
     {
         private PWServer pServer = null;
         private List<WorldSession> worlds = new List<WorldSession>();

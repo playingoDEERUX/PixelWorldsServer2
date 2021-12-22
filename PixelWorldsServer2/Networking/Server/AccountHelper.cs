@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PixelWorldsServer2.Networking.Server
 {
-    internal class AccountHelper
+    public class AccountHelper
     {
         PWServer pServer = null;
         public AccountHelper(PWServer pServer)

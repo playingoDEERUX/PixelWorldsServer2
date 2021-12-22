@@ -69,12 +69,15 @@ namespace PixelWorldsServer2
                 try
                 {
                     while (pwServer.GetServer() != null)
+                    {
                         pwServer.Host();
+                        pwServer.Poll(16);
+                    }
                 }
                 catch (Exception ex)
                 {
-                   // Util.Log("ex: " + ex.Message, true);
-                    //Util.Log("Call stack: " + ex.StackTrace);
+                   Util.Log("ex: " + ex.Message, true);
+                   Util.Log("Call stack: " + ex.StackTrace);
                 }
             }
             else

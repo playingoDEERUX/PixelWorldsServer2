@@ -140,7 +140,7 @@ namespace PixelWorldsServer2
 
         public static void LogBSONInDepth(BSONObject bObj, bool appendToFile = false)
         {
-            string data = "";
+            string data = "====================\n";
             foreach (string key in bObj.Keys)
             {
                 BSONValue bVal = bObj[key];
@@ -148,18 +148,18 @@ namespace PixelWorldsServer2
                 switch (bVal.valueType)
                 {
                     case BSONValue.ValueType.String:
-                        data += "[BSON] >> KEY: " + key + " VALUE: " + bVal.stringValue + "\n";
+                        data += "\t[BSON] >> KEY: " + key + " VALUE: " + bVal.stringValue + "\n";
                         break;
                     case BSONValue.ValueType.Object:
                         {
                             if (bVal is BSONObject)
                             {
-                                data += "[BSON] >> KEY: " + key + " VALUE: (is bsonobject)\n";
+                                data += "\t[BSON] >> KEY: " + key + " VALUE: (is bsonobject)\n";
                                 LogBSONInDepth(bVal as BSONObject, true);
                             }
                             else
                             {
-                                data += "[BSON] >> KEY: " + key + " VALUE: (is object)\n";
+                                data += "\t[BSON] >> KEY: " + key + " VALUE: (is object)\n";
                             }
                             // that object related shit is more complex so im gonna leave that for later
                             break;
@@ -167,27 +167,28 @@ namespace PixelWorldsServer2
                     case BSONValue.ValueType.Array:
                         {
 
-                            data += "[BSON] >> KEY: " + key + " VALUE: (is array)\n";
+                            data += "\t[BSON] >> KEY: " + key + " VALUE: (is array)\n";
                             break;
                         }
                     case BSONValue.ValueType.Int32:
-                        data += "[BSON] >> KEY: " + key + " VALUE: " + bVal.int32Value.ToString() + "\n";
+                        data += "\t[BSON] >> KEY: " + key + " VALUE: " + bVal.int32Value.ToString() + "\n";
                         break;
                     case BSONValue.ValueType.Int64:
-                        data += "[BSON] >> KEY: " + key + " VALUE: " + bVal.int64Value.ToString() + "\n";
+                        data += "\t[BSON] >> KEY: " + key + " VALUE: " + bVal.int64Value.ToString() + "\n";
                         break;
                     case BSONValue.ValueType.Double:
-                        data += "[BSON] >> KEY: " + key + " VALUE: " + bVal.doubleValue.ToString() + "\n";
+                        data += "\t[BSON] >> KEY: " + key + " VALUE: " + bVal.doubleValue.ToString() + "\n";
                         break;
                     case BSONValue.ValueType.Boolean:
-                        data += "[BSON] >> KEY: " + key + " VALUE: " + bVal.boolValue.ToString() + "\n";
+                        data += "\t[BSON] >> KEY: " + key + " VALUE: " + bVal.boolValue.ToString() + "\n";
                         break;
 
                     default:
-                        data += "[BSON] >> KEY: " + key + " VALUE TYPE: " + bVal.valueType.ToString() + "\n";
+                        data += "\t[BSON] >> KEY: " + key + " VALUE TYPE: " + bVal.valueType.ToString() + "\n";
                         break;
                 }
             }
+            data += "====================\n";
             Console.WriteLine(data);
 
             if (appendToFile)

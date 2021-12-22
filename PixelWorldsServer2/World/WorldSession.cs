@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace PixelWorldsServer2.World
 {
-    internal class WorldSession
+    public  class WorldSession
     {
         private PWServer pServer = null;
         private List<Player> players = new List<Player>();

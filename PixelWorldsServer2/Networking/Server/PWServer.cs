@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using FeatherNet;
 using Kernys.Bson;
@@ -9,7 +10,7 @@ using PixelWorldsServer2.World;
 
 namespace PixelWorldsServer2.Networking.Server
 {
-    class PWServer
+    public class PWServer
     {
         public int Version = 91;
         public int Port; // for quick-accessibility
@@ -19,6 +20,7 @@ namespace PixelWorldsServer2.Networking.Server
         private WorldManager worldManager = null;
         private AccountHelper accountHelper = null;
         public Dictionary<uint, Player> players = new Dictionary<uint, Player>();
+        public object locker = new object();
         public FeatherServer GetServer() => fServer;
         public MessageHandler GetMessageHandler() => msgHandler;
         public WorldManager GetWorldManager() => worldManager;
@@ -63,55 +65,52 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
+        public bool Poll(int duration = 1)
+        {
+            return fServer.GetListener().Server.Poll(duration * 1000, SelectMode.SelectRead);
+        }
+
         public void Host()
         {
-            var evs = fServer.Service(16);
-            foreach (var ev in evs)
+            lock (locker)
             {
-                switch (ev.type)
+                var evs = fServer.Service(1);
+                foreach (var ev in evs)
                 {
-                    case FeatherEvent.Types.CONNECT:
-                        onConnect(ev.client, ev.flags);
-                        break;
+                    switch (ev.type)
+                    {
+                        case FeatherEvent.Types.CONNECT:
+                            onConnect(ev.client, ev.flags);
+                            break;
 
-                    case FeatherEvent.Types.DISCONNECT:
-                        onDisconnect(ev.client, ev.flags);
-                        break;
+                        case FeatherEvent.Types.DISCONNECT:
+                            onDisconnect(ev.client, ev.flags);
+                            break;
 
-                    case FeatherEvent.Types.PING_NOW:
-                        ev.client.Send(new BSONObject("p"));
-                        break;
-
-                    case FeatherEvent.Types.RECEIVE:
-                        {
-                            BSONObject bObj = null;
-
-                            try
-                            {
-                                bObj = SimpleBSON.Load(ev.packetData.Skip(4).ToArray());
-                            }
-                            catch (Exception ex) 
-                            {
-#if DEBUG
-                                Util.Log(ex.Message);
-#endif
-                                break; 
-                            }
-
-                            if (bObj != null)
-                                onReceive(ev.client, bObj, ev.flags);
-
-                            ev.client.Flush();
-                        }
-                        break;
-
-                    default:
-                        break;
+                        default:
+                            break;
+                    }
                 }
-            }
 
-            Tick();
+                Tick();
+            }
         }
+
+        private void onPing(FeatherClient client, int flags)
+        {
+            if (client == null)
+                return;
+
+            if (client.data != null)
+            {
+                var pData = (Player.PlayerData)client.data;
+                pData.player.Ping();
+            }
+            else
+            {
+                client.Ping();
+            }
+        }   
 
         private void onDisconnect(FeatherClient client, int flags)
         {
@@ -156,20 +155,12 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
-        private void onReceive(FeatherClient client, BSONObject packet, int flags)
-        {
-            if (client == null)
-                return;
-
-            msgHandler.ProcessBSONPacket(client, packet);
-        }
-
         private void onConnect(FeatherClient client, int flags)
         {
             if (client == null)
                 return;
 
-            client.StartReading();
+            client.StartReading(this);
         }
     }
 }

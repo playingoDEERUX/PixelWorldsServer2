@@ -8,6 +8,7 @@ using Kernys.Bson;
 using System.Linq;
 using System.Threading;
 using PixelWorldsServer2.DataManagement;
+using PixelWorldsServer2.Networking.Server;
 using System.Threading.Tasks;
 
 namespace FeatherNet
@@ -27,7 +28,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 16; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 500; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MIN_TRANSACTION_SIZE = 4;
@@ -76,33 +77,60 @@ namespace FeatherNet
         {
             try
             {
+                var pServer = (PWServer)i.AsyncState;
                 var ns = client.GetStream();
                 int recv = ns.EndRead(i);
 
-                if (recv < 0 || recv >= FeatherDefaults.BUFFER_SIZE)
+                lock (pServer.locker)
                 {
-                    incomingEvents.Add(Disconnect());
-                    return;
-                }
+                    if (recv < 0 || recv >= FeatherDefaults.BUFFER_SIZE)
+                    {
+                        incomingEvents.Add(Disconnect());
+                        return;
+                    }
 
-                if (recv > 0)
-                {
-                    incomingEvents.Add(Receive(recvBuf, recv));
-                }
+                    if (recv > 0)
+                    {
+                        var ev = Receive(recvBuf, recv);
 
-                ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, null);
+                        BSONObject bObj = null;
+
+                        try
+                        {
+                            bObj = SimpleBSON.Load(ev.packetData.Skip(4).ToArray());
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("EX: " + ex.Message);
+                        }
+
+                        if (bObj != null)
+                        {
+                            pServer.GetMessageHandler().ProcessBSONPacket(this, bObj);
+                            UpdateLastResponse();
+                        }
+                    }
+
+                    if (client.Connected)
+                    {
+                        Flush();
+
+                        if (!isTimedOut() && !isDisconnecting())
+                            ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, pServer);
+                    }
+                }
             }
             catch (ObjectDisposedException) { }
             catch (IOException) { }
             catch (InvalidOperationException) { }
             catch (SocketException) { }
         }
-        public void StartReading()
+        public void StartReading(PWServer server)
         {
             try
             {
                 var ns = client.GetStream();
-                ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, null);
+                ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, server);
             }
             catch (ObjectDisposedException) { }
             catch (IOException) { }
@@ -128,6 +156,17 @@ namespace FeatherNet
             pingMul = FeatherDefaults.PING_MULTIPLIER;
         }
 
+        private void OnEndWrite(IAsyncResult i)
+        {
+            try
+            {
+                var ns = client.GetStream();
+                ns.EndWrite(i);
+            }
+            catch (IOException) { }
+            catch (ObjectDisposedException) { }
+        }
+
         public bool Flush()
         {
             if (client == null)
@@ -137,6 +176,7 @@ namespace FeatherNet
                 return false;
 
             var ns = client.GetStream();
+
             if (ns.CanWrite && outgoingPackets.Count > 0)
             {
                 // Serialize all bson objects into a single one:
@@ -165,12 +205,11 @@ namespace FeatherNet
 
                 try
                 {
-                    ns.Write(data, 0, data.Length);
-                    ns.Flush();
+                    ns.BeginWrite(data, 0, data.Length, OnEndWrite, null);
                 }
-                catch (IOException) 
+                catch (IOException)
                 {
-                    return false; 
+                    return false;
                 }
             }
             return true;
@@ -178,6 +217,7 @@ namespace FeatherNet
 
         public void Send(BSONObject bObj)
         {
+
             if (this.isConnected())
                 outgoingPackets.Add(bObj);
         }
@@ -363,6 +403,7 @@ namespace FeatherNet
                     continue; // user supposed to time-out later, receiving any packets is not permitted.
 
                 // see what events have been collected up:
+
                 while (fClient.incomingEvents.Count > 0)
                 {
                     events.Add(fClient.incomingEvents[0]);
@@ -405,11 +446,6 @@ namespace FeatherNet
                         ev.client.Free();
 
                         break;
-
-                    case FeatherEvent.Types.RECEIVE:
-                        ev.client.UpdateLastResponse();
-                        break;
-
                     default:
                         break;
                 }
