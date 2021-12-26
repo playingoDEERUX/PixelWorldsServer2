@@ -20,6 +20,24 @@ namespace PixelWorldsServer2.Networking.Server
             pServer = pwServer;
         }
 
+        public void ReleaseMessages(FeatherClient client)
+        {
+            Player p = client.data == null ? null : ((Player.PlayerData)client.data).player; // re-retrieve the player here.
+
+            if (p == null)
+            {
+                client.SendIfDoesNotContain(new BSONObject("p"));
+
+                if (client.CanFlush())
+                    client.Flush();
+            }
+            else
+            {
+                p.SendPing();
+                p.Tick();
+            }
+        }
+
         public void ProcessBSONPacket(FeatherClient client, BSONObject bObj)
         {
             if (pServer == null)
@@ -43,33 +61,15 @@ namespace PixelWorldsServer2.Networking.Server
 #endif
                 int messageCount = bObj["mc"];
 
+                
                 for (int i = 0; i < messageCount; i++)
                 {
                     if (!bObj.ContainsKey($"m{i}"))
                         throw new Exception($"Non existing message object failed to be accessed by index '{i}'!");
 
                     BSONObject mObj = bObj[$"m{i}"] as BSONObject;
-
                     string mID = mObj[MsgLabels.MessageID];
-                    string metaID = "";
-
-                    if (client.metaObj.ContainsKey(MsgLabels.MessageID))
-                    {
-                        metaID = client.metaObj[MsgLabels.MessageID];
-                    }
-
-                    /*if (metaID != mID)
-                    {
-                        client.metaObj[MsgLabels.MessageID] = mID;
-                        client.metaObj["c"] = 0;
-                    }
-                    else
-                    {
-                        client.metaObj["c"]++;
-                    }*/
-                    
-                    //Util.Log("Got message: " + mID);
-
+                   
                     switch (mID)
                     {
                     case MsgLabels.Ident.VersionCheck:
@@ -126,18 +126,12 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleRequestAIp(p, mObj);
                         break;
 
-                    case MsgLabels.Ident.MovePlayer:
-                        HandleMovePlayer(p, mObj);
+                    case "RsP":
+                        HandleRespawn(p, mObj);
                         break;
 
-                    case "HA":
-                        if (p != null)
-                        {
-                            bObj["U"] = p.Data.UserID;
-
-                            if (p.world != null)
-                                p.world.Broadcast(ref bObj, p);
-                        }
+                    case MsgLabels.Ident.MovePlayer:
+                        HandleMovePlayer(p, mObj);
                         break;
 
                     case MsgLabels.Ident.SetBlock:
@@ -152,24 +146,13 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleHitBackground(p, mObj);
                         break;
 
-                    case "A":
-                        client.Send(mObj);
-                        break;
-
-                    case "GSb":
-                        break;
-
-                    case MsgLabels.Ident.SyncTime:
-                        HandleSyncTime(client);
-                        break;
-
                     default:
                         break;
 
                     }
                 }
 
-                client.Send(new BSONObject(MsgLabels.Ident.Ping));
+            ReleaseMessages(client);
 #if RELEASE
             }
         
@@ -219,6 +202,7 @@ namespace PixelWorldsServer2.Networking.Server
             pd[MsgLabels.PlayerData.Username] = p.Data.Name.ToUpper();
             pd[MsgLabels.PlayerData.PlayerOPStatus] = 2;
             pd[MsgLabels.PlayerData.InventorySlots] = 400;
+            p.Data.Inventory = new PlayerInventory();
 
             if (p.Data.Inventory.Items.Count == 0)
             {
@@ -396,8 +380,11 @@ namespace PixelWorldsServer2.Networking.Server
             BSONObject pObj = new BSONObject("AnP");
             foreach (var player in p.world.Players)
             {
-                if (player == p)
+                if (player.Data.UserID == p.Data.UserID)
+                {
+                    Console.WriteLine("Players got equal userID??");
                     continue;
+                }
 
                 pObj["x"] = player.Data.PosX;
                 pObj["y"] = player.Data.PosY;
@@ -456,6 +443,8 @@ namespace PixelWorldsServer2.Networking.Server
             List<int> spotsList = new List<int>();
             //spotsList.AddRange(Enumerable.Repeat(0, 35));
 
+            Console.WriteLine("UserID: " + p.Data.UserID.ToString("X8"));
+
             pObj["spots"] = spotsList;
             pObj["familiar"] = 0;
             pObj["familiarName"] = "";
@@ -497,9 +486,13 @@ namespace PixelWorldsServer2.Networking.Server
             if (p == null)
                 return;
 
+            if (p.world == null)
+                return;
+
             p.Send(ref bObj);
         }
-        public void HandleHitBackground(Player p, BSONObject bObj)
+
+        public void HandleRespawn(Player p, BSONObject bObj)
         {
             if (p == null)
                 return;
@@ -507,6 +500,20 @@ namespace PixelWorldsServer2.Networking.Server
             if (p.world == null)
                 return;
 
+            var w = p.world;
+
+            BSONObject resp = new BSONObject();
+            resp[MsgLabels.MessageID] = "UD";
+            resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
+            resp["x"] = w.SpawnPointX;
+            resp["y"] = w.SpawnPointY;
+            resp["DBl"] = 0;
+
+            w.Broadcast(ref resp);
+            p.Send(ref bObj);
+        }
+        public void HandleHitBackground(Player p, BSONObject bObj)
+        {
             if (p == null)
                 return;
 

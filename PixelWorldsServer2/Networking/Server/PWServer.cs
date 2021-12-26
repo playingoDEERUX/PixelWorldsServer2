@@ -63,6 +63,12 @@ namespace PixelWorldsServer2.Networking.Server
                 if (p.isInGame)
                     p.Tick();
             }
+
+            foreach (var client in fServer.GetClients())
+            {
+                if (client.CanFlush())
+                    client.Flush();
+            }
         }
 
         public bool Poll(int duration = 1)
@@ -87,12 +93,14 @@ namespace PixelWorldsServer2.Networking.Server
                             onDisconnect(ev.client, ev.flags);
                             break;
 
+                        case FeatherEvent.Types.RECEIVE:
+                            onReceive(ev.client, SimpleBSON.Load(ev.packetData), ev.flags);
+                            break;
+
                         default:
                             break;
                     }
                 }
-
-                Tick();
             }
         }
 
@@ -101,15 +109,8 @@ namespace PixelWorldsServer2.Networking.Server
             if (client == null)
                 return;
 
-            if (client.data != null)
-            {
-                var pData = (Player.PlayerData)client.data;
-                pData.player.Ping();
-            }
-            else
-            {
-                client.Ping();
-            }
+            if (client.canRespond)
+                client.SendIfDoesNotContain(new BSONObject("p"));
         }   
 
         private void onDisconnect(FeatherClient client, int flags)
@@ -153,6 +154,15 @@ namespace PixelWorldsServer2.Networking.Server
                     p.SetClient(null);
                 }
             }
+        }
+
+        private void onReceive(FeatherClient client, BSONObject packet, int flags)
+        {
+            if (client == null)
+                return;
+
+            msgHandler.ProcessBSONPacket(client, packet);
+
         }
 
         private void onConnect(FeatherClient client, int flags)

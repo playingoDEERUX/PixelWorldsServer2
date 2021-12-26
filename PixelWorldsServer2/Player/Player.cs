@@ -76,19 +76,25 @@ namespace PixelWorldsServer2
                     Client.Send(packets[0]);
                     packets.RemoveAt(0);
                 }
+
+                if (Client.CanFlush())
+                    Client.Flush();
             }
         }
 
-        public void SetClient(FeatherClient fClient) => this.fClient = fClient;
-        public void Send(ref BSONObject packet) => packets.Add(packet);
-
-        public void Ping()
+        public void SendPing()
         {
-            if (Client.needsPing())
-                return; // its gonna receive a ping anyway
+            foreach (var pac in packets)
+            {
+                if (pac["ID"] == "p")
+                    return;
+            }
 
             BSONObject p = new BSONObject("p");
             Send(ref p);
         }
+
+        public void SetClient(FeatherClient fClient) => this.fClient = fClient;
+        public void Send(ref BSONObject packet) => packets.Add(packet);
     }
 }

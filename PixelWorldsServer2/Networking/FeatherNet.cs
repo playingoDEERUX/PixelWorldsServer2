@@ -28,11 +28,19 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 500; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 16; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
+        public const int MAX_PACKET_SIZE = 160000;
         public const int MIN_TRANSACTION_SIZE = 4;
         public const int TIMEOUT_DURATION = 15000;
+    }
+
+    public class FeatherState
+    {
+        public byte[] buffer = new byte[FeatherDefaults.BUFFER_SIZE];
+        public byte[] data;
+        public int bytesReadToData = 0;
     }
 
     public class FeatherClient
@@ -46,24 +54,9 @@ namespace FeatherNet
 
         public bool needsPing()
         {
-            return !alreadyPinged() && FeatherUtil.GetTimeMs() > lastResponse + (FeatherDefaults.PING_CLOCK_MS * pingMul);
+            return FeatherUtil.GetTimeMs() > lastResponse + (FeatherDefaults.PING_CLOCK_MS * pingMul);
         }
 
-        private bool alreadyPinged()
-        {
-            foreach (var bson in outgoingPackets)
-            {
-                if (!bson.Contains(MsgLabels.MessageID))
-                    continue;
-
-                if (bson[MsgLabels.MessageID] == MsgLabels.Ident.Ping)
-                    return true;
-            }
-
-            return false;
-        }
-
-        public BSONObject metaObj = new BSONObject(); // reserved.
         private TcpClient client = null;
         private long lastResponse = 0;
         public int pingMul = 1;
@@ -71,66 +64,92 @@ namespace FeatherNet
         public object data = null; // Freely applicable data that developer may or may not use.
         private List<BSONObject> outgoingPackets = new List<BSONObject>();
         public List<FeatherEvent> incomingEvents = new List<FeatherEvent>();
-        private byte[] recvBuf = new byte[FeatherDefaults.BUFFER_SIZE];
+        public object link = null; // can link to any wanted object in here as well. Should suffice for anything extra.
 
-        private void OnEndRead(IAsyncResult i)
+        private void OnEndWrite(IAsyncResult i)
         {
             try
             {
-                var pServer = (PWServer)i.AsyncState;
+                var ns = client.GetStream();
+                ns.EndWrite(i);
+
+                canRespond = false;
+                StartReading(link as PWServer);
+            }
+            catch
+            {
+
+            }
+        }
+
+        private void OnEndRead(IAsyncResult i)
+        {
+            bool continueNetwork = false;
+
+            try
+            {
+                var pServer = (PWServer)link;
                 var ns = client.GetStream();
                 int recv = ns.EndRead(i);
+                FeatherState fState = i.AsyncState as FeatherState;
 
                 lock (pServer.locker)
                 {
+                    continueNetwork = client.Connected && !isTimedOut() && !isDisconnecting();
                     if (recv < 0 || recv >= FeatherDefaults.BUFFER_SIZE)
                     {
-                        incomingEvents.Add(Disconnect());
+                        Timeout();
                         return;
                     }
 
                     if (recv > 0)
                     {
-                        var ev = Receive(recvBuf, recv);
-
-                        BSONObject bObj = null;
-
-                        try
+                        if (fState.data == null)
                         {
-                            bObj = SimpleBSON.Load(ev.packetData.Skip(4).ToArray());
+                            int num2 = BitConverter.ToInt32(fState.buffer, 0);
+
+                            if (num2 <= 4 || num2 > FeatherDefaults.MAX_PACKET_SIZE)
+                            {
+                                Timeout();
+                                return;
+                            }
+
+                            fState.data = new byte[num2 - 4];
+                            Array.Copy(fState.buffer, 4, fState.data, 0, recv - 4);
+                            fState.bytesReadToData = recv - 4;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Console.WriteLine("EX: " + ex.Message);
+                            Array.Copy(fState.buffer, 0, fState.data, fState.bytesReadToData, recv);
+                            fState.bytesReadToData += recv;
                         }
-
-                        if (bObj != null)
+                        if (fState.bytesReadToData == fState.data.Length)
                         {
-                            pServer.GetMessageHandler().ProcessBSONPacket(this, bObj);
-                            UpdateLastResponse();
+                            // packet is ready!
+                            canRespond = true;
+                            incomingEvents.Add(Receive(fState.data));
                         }
-                    }
-
-                    if (client.Connected)
-                    {
-                        Flush();
-
-                        if (!isTimedOut() && !isDisconnecting())
-                            ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, pServer);
+                        else
+                        {
+                            ns.BeginRead(fState.buffer, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, fState);
+                        }
                     }
                 }
             }
-            catch (ObjectDisposedException) { }
-            catch (IOException) { }
-            catch (InvalidOperationException) { }
-            catch (SocketException) { }
+            catch
+            {
+
+            }
         }
         public void StartReading(PWServer server)
         {
+            this.link = server;
             try
             {
+                FeatherState fState = new FeatherState();
+
                 var ns = client.GetStream();
-                ns.BeginRead(recvBuf, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, server);
+                ns.BeginRead(fState.buffer, 0, FeatherDefaults.BUFFER_SIZE, OnEndRead, fState);
             }
             catch (ObjectDisposedException) { }
             catch (IOException) { }
@@ -156,70 +175,73 @@ namespace FeatherNet
             pingMul = FeatherDefaults.PING_MULTIPLIER;
         }
 
-        private void OnEndWrite(IAsyncResult i)
+        public bool canRespond = true;
+
+        public bool CanFlush() => outgoingPackets.Count > 0;
+
+        public void Flush()
         {
+            if (client == null)
+                return;
+
+            if (!client.Connected)
+                return;
+
             try
             {
                 var ns = client.GetStream();
-                ns.EndWrite(i);
-            }
-            catch (IOException) { }
-            catch (ObjectDisposedException) { }
-        }
 
-        public bool Flush()
-        {
-            if (client == null)
-                return false;
-
-            if (!client.Connected)
-                return false;
-
-            var ns = client.GetStream();
-
-            if (ns.CanWrite && outgoingPackets.Count > 0)
-            {
-                // Serialize all bson objects into a single one:
-
-                BSONObject packet = new BSONObject();
-
-                for (int i = 0; i < outgoingPackets.Count; i++)
+                if (ns.CanWrite && outgoingPackets.Count > 0)
                 {
-                    packet[$"m{i}"] = outgoingPackets[i];
-                }
-                packet["mc"] = outgoingPackets.Count;
+                    // Serialize all bson objects into a single one:
 
-                outgoingPackets.Clear();
+                    BSONObject packet = new BSONObject();
 
-                byte[] bData = SimpleBSON.Dump(packet);
+                    for (int i = 0; i < outgoingPackets.Count; i++)
+                    {
+                        packet[$"m{i}"] = outgoingPackets[i];
+                    }
+                    packet["mc"] = outgoingPackets.Count;
 
-                int len = bData.Length + 4;
-                byte[] data = new byte[len];
+                    outgoingPackets.Clear();
 
-                Array.Copy(BitConverter.GetBytes(len), data, sizeof(int));
+                    byte[] bData = SimpleBSON.Dump(packet);
 
-                if (bData.Length > 0)
-                    Buffer.BlockCopy(bData, 0, data, 4, bData.Length);
-                else
-                    return true; // huh? Treat it to be legal just incase anyway...
+                    int len = bData.Length + 4;
+                    byte[] data = new byte[len];
 
-                try
-                {
+                    Array.Copy(BitConverter.GetBytes(len), data, sizeof(int));
+
+                    if (bData.Length > 0)
+                        Buffer.BlockCopy(bData, 0, data, 4, bData.Length);
+                    else
+                        return; // huh? Treat it to be legal just incase anyway...
+
                     ns.BeginWrite(data, 0, data.Length, OnEndWrite, null);
                 }
-                catch (IOException)
-                {
-                    return false;
-                }
             }
-            return true;
+            catch
+            {
+
+            }
         }
 
         public void Send(BSONObject bObj)
         {
-
             if (this.isConnected())
                 outgoingPackets.Add(bObj);
+        }
+
+        public void SendIfDoesNotContain(BSONObject bObj)
+        {
+            string id = bObj["ID"];
+            for (int i = 0; i < outgoingPackets.Count; i++)
+            {
+                if (outgoingPackets[i]["ID"] == id)
+                    return;
+            }
+
+            Send(bObj);
         }
 
         public void Free()
@@ -256,15 +278,12 @@ namespace FeatherNet
 
         public void Timeout() => this.timedOut = true;
         public void DisconnectLater() => this.disconnectLater = true;
-        public FeatherEvent Receive(byte[] buffer, int len)
+        public FeatherEvent Receive(byte[] buffer)
         {
-            // No message framing is done in server side, since requests are supposed to be small.
-            // If you require additional message framing, please implement so on an external layer.
-
             FeatherEvent ev = new FeatherEvent();
             ev.client = this;
             ev.type = FeatherEvent.Types.RECEIVE;
-            ev.packetData = buffer.Take(len).ToArray();
+            ev.packetData = buffer;
 
             return ev;
         }
@@ -446,6 +465,11 @@ namespace FeatherNet
                         ev.client.Free();
 
                         break;
+
+                    case FeatherEvent.Types.RECEIVE:
+                        ev.client.UpdateLastResponse();
+                        break;
+
                     default:
                         break;
                 }

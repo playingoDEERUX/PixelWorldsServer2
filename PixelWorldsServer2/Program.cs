@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using PixelWorldsServer2.Networking.Server;
 
 namespace PixelWorldsServer2
@@ -64,20 +65,13 @@ namespace PixelWorldsServer2
 
             if (pwServer.Start())
             {
-                Util.Log($"Pixel Worlds Server has been started. Hosting now at port {pwServer.Port}!");
+                Util.Log($"Pixel Worlds Server (0.1.1) has been started. Hosting now at port {pwServer.Port}!");
 
-                try
+                
+                while (pwServer.GetServer() != null)
                 {
-                    while (pwServer.GetServer() != null)
-                    {
-                        pwServer.Host();
-                        pwServer.Poll(16);
-                    }
-                }
-                catch (Exception ex)
-                {
-                   Util.Log("ex: " + ex.Message, true);
-                   Util.Log("Call stack: " + ex.StackTrace);
+                    pwServer.Host();
+                    Thread.Sleep(1);
                 }
             }
             else
