@@ -77,7 +77,7 @@ namespace PixelWorldsServer2
                     packets.RemoveAt(0);
                 }
 
-                if (Client.CanFlush())
+                if (Client.areWeSending)
                     Client.Flush();
             }
         }

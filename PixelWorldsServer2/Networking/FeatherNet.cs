@@ -73,7 +73,6 @@ namespace FeatherNet
                 var ns = client.GetStream();
                 ns.EndWrite(i);
 
-                canRespond = false;
                 StartReading(link as PWServer);
             }
             catch
@@ -126,7 +125,6 @@ namespace FeatherNet
                         if (fState.bytesReadToData == fState.data.Length)
                         {
                             // packet is ready!
-                            canRespond = true;
                             incomingEvents.Add(Receive(fState.data));
                         }
                         else
@@ -175,9 +173,9 @@ namespace FeatherNet
             pingMul = FeatherDefaults.PING_MULTIPLIER;
         }
 
-        public bool canRespond = true;
+        public bool areWeSending = false;
 
-        public bool CanFlush() => outgoingPackets.Count > 0;
+        public bool CanFlush() => outgoingPackets.Count > 0 && areWeSending;
 
         public void Flush()
         {
@@ -218,6 +216,7 @@ namespace FeatherNet
                         return; // huh? Treat it to be legal just incase anyway...
 
                     ns.BeginWrite(data, 0, data.Length, OnEndWrite, null);
+                    areWeSending = false;
                 }
             }
             catch
@@ -423,7 +422,7 @@ namespace FeatherNet
 
                 // see what events have been collected up:
 
-                while (fClient.incomingEvents.Count > 0)
+                if (fClient.incomingEvents.Count > 0 && !fClient.areWeSending)
                 {
                     events.Add(fClient.incomingEvents[0]);
                     fClient.incomingEvents.RemoveAt(0);
@@ -474,6 +473,9 @@ namespace FeatherNet
                         break;
                 }
             }
+
+            if (events.Length <= 1)
+                Thread.Sleep(timeout);
 
             return events;
         }

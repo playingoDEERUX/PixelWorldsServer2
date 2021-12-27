@@ -69,10 +69,7 @@ namespace PixelWorldsServer2
 
                 
                 while (pwServer.GetServer() != null)
-                {
                     pwServer.Host();
-                    Thread.Sleep(1);
-                }
             }
             else
             {

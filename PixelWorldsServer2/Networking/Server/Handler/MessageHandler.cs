@@ -26,14 +26,11 @@ namespace PixelWorldsServer2.Networking.Server
 
             if (p == null)
             {
-                client.SendIfDoesNotContain(new BSONObject("p"));
-
                 if (client.CanFlush())
                     client.Flush();
             }
             else
             {
-                p.SendPing();
                 p.Tick();
             }
         }
@@ -69,7 +66,9 @@ namespace PixelWorldsServer2.Networking.Server
 
                     BSONObject mObj = bObj[$"m{i}"] as BSONObject;
                     string mID = mObj[MsgLabels.MessageID];
-                   
+
+                    //Console.WriteLine("Got message: " + mID);
+
                     switch (mID)
                     {
                     case MsgLabels.Ident.VersionCheck:
@@ -151,8 +150,10 @@ namespace PixelWorldsServer2.Networking.Server
 
                     }
                 }
-
-            ReleaseMessages(client);
+            /*if (p == null)
+                client.SendIfDoesNotContain(new BSONObject("p"));
+            else
+                p.SendPing();*/
 #if RELEASE
             }
         
@@ -565,8 +566,8 @@ namespace PixelWorldsServer2.Networking.Server
                 if (tile.fg.id <= 0)
                     return;
 
-                if (++tile.fg.damage > 2)
-                {
+                //if (++tile.fg.damage > 2)
+                //{
                     resp[MsgLabels.DestroyBlockBlockType] = (int)tile.fg.id;
                     resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
                     resp["x"] = x;
@@ -574,7 +575,7 @@ namespace PixelWorldsServer2.Networking.Server
                     w.Broadcast(ref resp);
 
                     tile.fg.id = 0;
-                }
+                //}
             }
         }
 

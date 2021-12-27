@@ -66,7 +66,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             foreach (var client in fServer.GetClients())
             {
-                if (client.CanFlush())
+                if (client.areWeSending)
                     client.Flush();
             }
         }
@@ -97,10 +97,16 @@ namespace PixelWorldsServer2.Networking.Server
                             onReceive(ev.client, SimpleBSON.Load(ev.packetData), ev.flags);
                             break;
 
+                        case FeatherEvent.Types.PING_NOW:
+                            onPing(ev.client, ev.flags);
+                            break;
+
                         default:
                             break;
                     }
                 }
+
+                Tick();
             }
         }
 
@@ -109,8 +115,16 @@ namespace PixelWorldsServer2.Networking.Server
             if (client == null)
                 return;
 
-            if (client.canRespond)
+            Player p = client.data == null ? null : ((Player.PlayerData)client.data).player;
+
+            if (p == null)
+            {
                 client.SendIfDoesNotContain(new BSONObject("p"));
+            }
+            else
+            {
+                p.SendPing();
+            }
         }   
 
         private void onDisconnect(FeatherClient client, int flags)
@@ -162,7 +176,7 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             msgHandler.ProcessBSONPacket(client, packet);
-
+            client.areWeSending = true;
         }
 
         private void onConnect(FeatherClient client, int flags)
