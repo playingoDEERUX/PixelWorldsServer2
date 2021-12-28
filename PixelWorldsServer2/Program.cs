@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.Networking.Server;
 
 namespace PixelWorldsServer2
@@ -61,12 +62,17 @@ namespace PixelWorldsServer2
                 Util.Log("Error SQLite database failed! Continuing... (saving of data may not work)");
             }
 
+            ItemDB.Initialize();
+            Util.Log("ItemDB initialized!");
+
             Util.Log("Starting Pixel Worlds Server...");
 
             if (pwServer.Start())
             {
                 Util.Log($"Pixel Worlds Server (0.1.1) has been started. Hosting now at port {pwServer.Port}!");
-
+                Util.Log("Initializing Discord Bot...");
+                DiscordBot.Init();
+                Util.Log("Discord Bot OK!");
                 
                 while (pwServer.GetServer() != null)
                     pwServer.Host();

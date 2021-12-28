@@ -21,6 +21,7 @@ namespace PixelWorldsServer2.Networking.Server
         private AccountHelper accountHelper = null;
         public Dictionary<uint, Player> players = new Dictionary<uint, Player>();
         public object locker = new object();
+        private long lastDiscordUpdateTime;
         public FeatherServer GetServer() => fServer;
         public MessageHandler GetMessageHandler() => msgHandler;
         public WorldManager GetWorldManager() => worldManager;
@@ -64,10 +65,17 @@ namespace PixelWorldsServer2.Networking.Server
                     p.Tick();
             }
 
-            foreach (var client in fServer.GetClients())
+            var clients = fServer.GetClients();
+            foreach (var client in clients)
             {
                 if (client.areWeSending)
                     client.Flush();
+            }
+
+            if (Util.GetSec() > lastDiscordUpdateTime + 9)
+            {
+                _ = DiscordBot.UpdateStatus($"Join {clients.Length} other players!");
+                lastDiscordUpdateTime = Util.GetSec();
             }
         }
 

@@ -7,34 +7,12 @@ namespace PixelWorldsServer2.DataManagement
 {
     interface ConfigManager
     {
-
-        // 8 bit settings:
-        // 1st bit -> host server locally (127.0.0.1) yes/no
-        // 2nd bit -> toggle subserver support
-        // 3rd bit -> toggle locking support
-        // 4th bit -> toggle NPC support
-        // 5th bit -> toggle world generation support
-        // 6th bit -> reserved
-        // 7th bit -> reserved
-        // 8th bit -> reserved
-        struct ServerConfiguration 
+        struct ServerConfiguration
         {
             public ushort serverPort;
             public ushort gameVersion; // is necessary to even allow for login
-            public short playerLimit; // if -1, allow infinite / have no block, but will be capped by general IPV4/TCP standards to 65535 anyway and bottlenecked even earlier by hardware
-            public string dbHost;
-            public string dbPass;
-        };
-
-        public enum SettingsFlag
-        {
-            HOST_LOCALLY,
-            MULTI_SERVER_SUPPORT,
-            TILE_LOCKING,
-            NPC_SUPPORT,
-            UNIQUE_WORLD
+            public short playerLimit;
         }
-
         static string GetAsPrintable(ServerConfiguration config)
         {
             string toPrint = string.Empty;
@@ -42,7 +20,6 @@ namespace PixelWorldsServer2.DataManagement
             toPrint += $"\n\tServer Port: {config.serverPort}\n";
             toPrint += $"\n\tGame Version: {config.gameVersion}\n";
             toPrint += $"\n\tPlayer Max Limit: {config.playerLimit}\n";
-            toPrint += $"\n\tDatabase host: {config.dbHost}\n";
 
             return toPrint;
         }
@@ -87,18 +64,6 @@ namespace PixelWorldsServer2.DataManagement
                         if (!short.TryParse(value, out config.playerLimit))
                             Console.WriteLine($"Invalid conversion from config value '{value}' by key '{key}'.");
 
-                        break;
-
-                    case "database":
-                        {
-                            config.dbHost = value;
-                        }
-                        break;
-
-                    case "database_pass":
-                        {
-                            config.dbPass = value;
-                        }
                         break;
 
                     default:

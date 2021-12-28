@@ -458,8 +458,6 @@ namespace FeatherNet
                         if (ev.client == null)
                             break;
 
-                        Console.WriteLine("Client disconnects!");
-
                         clients.Remove(ev.client);
                         ev.client.Free();
 
@@ -474,7 +472,7 @@ namespace FeatherNet
                 }
             }
 
-            if (events.Length <= 1)
+            if (events.Length == 0)
                 Thread.Sleep(timeout);
 
             return events;

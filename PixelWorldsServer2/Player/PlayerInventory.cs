@@ -1,6 +1,7 @@
 ﻿using PixelWorldsServer2.DataManagement;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace PixelWorldsServer2
@@ -40,6 +41,45 @@ namespace PixelWorldsServer2
             }
 
             invItem = new InventoryItem(0, 0, 0);
+        }
+
+        public byte[] Serialize()
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var bw = new BinaryWriter(stream))
+                {
+                    foreach (var item in Items)
+                    {
+                        bw.Write(item.itemID);
+                        bw.Write(item.flags);
+                        bw.Write(item.amount);
+                    }
+                }
+
+                return stream.ToArray();
+            }
+        }
+
+        public void InitFirstSetup()
+        {
+            // bunch of cool items
+            Items.Add(new InventoryItem(605, 0, 9999));
+            Items.Add(new InventoryItem(869, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(870, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(871, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(890, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(1018, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(1019, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(4267, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(4268, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(4269, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(4093, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(2152, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(1412, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(3175, (short)ItemFlags.IS_WEARABLE, 9999));
         }
     }
 }

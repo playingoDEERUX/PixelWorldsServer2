@@ -20,6 +20,11 @@ namespace PixelWorldsServer2.Networking.Server
             pServer = pwServer;
         }
 
+        public void InventoryFirstSetup(PlayerInventory pInv)
+        {
+           
+        }
+
         public void ReleaseMessages(FeatherClient client)
         {
             Player p = client.data == null ? null : ((Player.PlayerData)client.data).player; // re-retrieve the player here.
@@ -137,6 +142,10 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleSetBlock(p, mObj);
                         break;
 
+                    case MsgLabels.Ident.SetBackgroundBlock:
+                        HandleSetBackgroundBlock(p, mObj);
+                        break;
+
                     case MsgLabels.Ident.HitBlock:
                         HandleHitBlock(p, mObj);
                         break;
@@ -145,15 +154,15 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleHitBackground(p, mObj);
                         break;
 
+                    case MsgLabels.Ident.SyncTime:
+                        HandleSyncTime(client);
+                        break;
+
                     default:
                         break;
 
                     }
                 }
-            /*if (p == null)
-                client.SendIfDoesNotContain(new BSONObject("p"));
-            else
-                p.SendPing();*/
 #if RELEASE
             }
         
@@ -203,44 +212,14 @@ namespace PixelWorldsServer2.Networking.Server
             pd[MsgLabels.PlayerData.Username] = p.Data.Name.ToUpper();
             pd[MsgLabels.PlayerData.PlayerOPStatus] = 2;
             pd[MsgLabels.PlayerData.InventorySlots] = 400;
-            p.Data.Inventory = new PlayerInventory();
 
             if (p.Data.Inventory.Items.Count == 0)
             {
-                p.Data.Inventory.Items.Add(new InventoryItem(605, 0, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(869, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(870, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(871, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(890, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(1018, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(1019, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(4267, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(4268, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(4269, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(4093, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(2152, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(1412, (short)ItemFlags.IS_WEARABLE, 9999));
-                p.Data.Inventory.Items.Add(new InventoryItem(3175, (short)ItemFlags.IS_WEARABLE, 9999));
+                p.Data.Inventory.InitFirstSetup();
             }
 
-            using (var stream = new MemoryStream())
-            {
-                using (var bw = new BinaryWriter(stream))
-                {
-                    foreach (var item in p.Data.Inventory.Items)
-                    {
-                        bw.Write(item.itemID);
-                        bw.Write(item.flags);
-                        bw.Write(item.amount);
-                    }
-                }
-                pd["inv"] = stream.ToArray();
-            }
-
+            pd["inv"] = p.Data.Inventory.Serialize();
             pd["tutorialState"] = 3;
-            //pd["tutorialQuestCompleteState"] = 1;
             resp["rUN"] = p.Data.Name;
             resp["pD"] = SimpleBSON.Dump(pd);
             resp["U"] = p.Data.UserID.ToString("X8");
@@ -261,9 +240,116 @@ namespace PixelWorldsServer2.Networking.Server
             if (p.world == null)
                 return;
 
-            bObj[MsgLabels.MessageID] = "WCM";
-            bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage(p.Data.Name, p.Data.UserID.ToString("X8"), "#" + p.world.WorldName, 0, bObj["msg"]);
-            p.world.Broadcast(ref bObj, p);
+            string msg = bObj["msg"];
+
+            string[] tokens = msg.Split(" ");
+            int tokCount = tokens.Count();
+            
+            if (tokCount <= 0)
+                return;
+
+            if (tokens[0] == "")
+                return;
+
+            if (tokens[0][0] == '/')
+            {
+                string res = "Unknown command.";
+                switch (tokens[0])
+                {
+                    case "/help":
+                        res = "Commands >> /help /item /find";
+                        break;
+
+                    case "/find":
+                        {
+                            if (tokCount < 2)
+                            {
+                                res = "Usage: /find (ITEM NAME)";
+                                break;
+                            }
+
+                            string item_query = tokens[1];
+
+                            if (item_query.Length < 2)
+                            {
+                                res = "Please enter an item name with more than 2 characters!";
+                                break;
+                            }
+
+                            var items = ItemDB.FindByAnyName(item_query);
+
+                            if (items.Length > 0)
+                            {
+                                string found = "";
+
+                                foreach (var it in items)
+                                {
+                                    found += $"\nItem Name: {it.name}   ID: {it.ID}";
+                                }
+
+                                res = $"Found items:{found}";
+                            }
+                            else
+                            {
+                                res = $"No item containing '{item_query}' was found.";
+                            }
+                            break;
+                        }
+
+                    case "/item":
+                        if (tokCount < 2)
+                        {
+                            res = "Usage: /item (ITEM ID)";
+                        }
+                        else
+                        {
+                            int id;
+                            int.TryParse(tokens[1], out id);
+
+                            var it = ItemDB.GetByID(id);
+
+                            BSONObject cObj = new BSONObject();
+
+                            cObj["ID"] = "nCo";
+                            cObj["CollectableID"] = 1;
+                            cObj["BlockType"] = id;
+                            cObj["Amount"] = 9999; // HACK
+                            cObj["InventoryType"] = it.type;
+                            cObj["PosX"] = p.Data.PosX * 3.181d; /*cld.posX = world.spawnPointX / 3.125d;
+            cld.posY = world.spawnPointY / 3.181d;*/
+                            cObj["PosY"] = p.Data.PosY * 3.181d;
+                            cObj["IsGem"] = false;
+                            cObj["GemType"] = 0;
+                            p.Send(ref cObj);
+
+                            cObj["ID"] = "C";
+                            p.Send(ref cObj);
+
+                            if (it.ID < 0)
+                                res = $"Item {id} not in database, but tried giving anyways (might cause issues).";
+                            else
+                                res = @$"Given 9999 {it.name}  (ID {id}).";
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+
+                bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
+                    p.world.WorldID.ToString("X8"),
+                    p.world.WorldName,
+                    1,
+                    res);
+
+                p.Send(ref bObj);
+            }
+            else
+            {
+                bObj[MsgLabels.MessageID] = "WCM";
+                bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage(p.Data.Name, p.Data.UserID.ToString("X8"), "#" + p.world.WorldName, 0, msg);
+                p.world.Broadcast(ref bObj, p);
+            }
         }
 
         public void HandleMoreWorldInfo(Player p, BSONObject bObj)
@@ -533,6 +619,11 @@ namespace PixelWorldsServer2.Networking.Server
                 if (tile.bg.id <= 0)
                     return;
 
+                if (Util.GetSec() > tile.bg.lastHit + 4)
+                {
+                    tile.bg.damage = 0;
+                }
+
                 if (++tile.bg.damage > 2)
                 {
                     resp[MsgLabels.DestroyBlockBlockType] = (int)tile.bg.id;
@@ -543,6 +634,8 @@ namespace PixelWorldsServer2.Networking.Server
 
                     tile.bg.id = 0;
                 }
+
+                tile.bg.lastHit = Util.GetSec();
             }
         }
 
@@ -566,8 +659,13 @@ namespace PixelWorldsServer2.Networking.Server
                 if (tile.fg.id <= 0)
                     return;
 
-                //if (++tile.fg.damage > 2)
-                //{
+                if (Util.GetSec() > tile.fg.lastHit + 4)
+                {
+                    tile.fg.damage = 0;
+                }
+
+                if (++tile.fg.damage > 2)
+                {
                     resp[MsgLabels.DestroyBlockBlockType] = (int)tile.fg.id;
                     resp[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
                     resp["x"] = x;
@@ -575,7 +673,10 @@ namespace PixelWorldsServer2.Networking.Server
                     w.Broadcast(ref resp);
 
                     tile.fg.id = 0;
-                //}
+                    tile.fg.damage = 0;
+                }
+
+                tile.fg.lastHit = Util.GetSec();
             }
         }
 
@@ -621,6 +722,31 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
                     }
             }
+        }
+
+        public void HandleSetBackgroundBlock(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+            var w = p.world;
+
+            int x = bObj["x"], y = bObj["y"];
+            short blockType = (short)bObj["BlockType"];
+            Item it = ItemDB.GetByID(blockType);
+
+            bObj["U"] = p.Data.UserID;
+
+
+            var t = w.GetTile(x, y);
+            t.bg.id = blockType;
+            t.bg.damage = 0;
+            t.bg.lastHit = 0;
+
+            w.Broadcast(ref bObj);
         }
         public void HandleMovePlayer(Player p, BSONObject bObj)
         {

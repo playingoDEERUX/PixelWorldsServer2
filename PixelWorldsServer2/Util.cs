@@ -51,9 +51,14 @@ namespace PixelWorldsServer2
             return (DateTime.UtcNow - default(TimeSpan)).Ticks;
         }
 
-        public static long GetTimeInternalMS()
+        public static long GetMs()
         {
             return DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        }
+
+        public static long GetSec()
+        {
+            return DateTimeOffset.Now.ToUnixTimeSeconds();
         }
 
         public class TextScanner
