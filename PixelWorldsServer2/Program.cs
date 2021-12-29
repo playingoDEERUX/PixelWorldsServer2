@@ -53,7 +53,8 @@ namespace PixelWorldsServer2
                     "Country char(3) NOT NULL DEFAULT '00'," +
                     "Gems int NOT NULL DEFAULT '0'," +
                     "ByteCoins int NOT NULL DEFAULT '0'," +
-                    "Settings int NOT NULL DEFAULT '0')");
+                    "Settings int NOT NULL DEFAULT '0'," +
+                    "Inventory varbinary(6144) DEFAULT NULL)");
 
                 pSQL.Query("CREATE TABLE IF NOT EXISTS worlds (ID INTEGER PRIMARY KEY NOT NULL, Name varchar(32) NOT NULL DEFAULT '')");
             }
@@ -71,9 +72,13 @@ namespace PixelWorldsServer2
             {
                 Util.Log($"Pixel Worlds Server (0.1.1) has been started. Hosting now at port {pwServer.Port}!");
 
+                Console.CancelKeyPress += delegate 
+                {
+                    pwServer.Shutdown();
+                };
 #if DEBUG
 #else
-Util.Log("Initializing Discord Bot...");
+                Util.Log("Initializing Discord Bot...");
                 DiscordBot.Init();
                 Util.Log("Discord Bot OK!");
 #endif

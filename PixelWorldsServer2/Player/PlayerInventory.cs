@@ -43,6 +43,14 @@ namespace PixelWorldsServer2
             invItem = new InventoryItem(0, 0, 0);
         }
 
+        public PlayerInventory(byte[] data = null)
+        {
+            if (data == null)
+                return;
+
+            Load(data);
+        }
+
         public byte[] Serialize()
         {
             using (var stream = new MemoryStream())
@@ -58,6 +66,31 @@ namespace PixelWorldsServer2
                 }
 
                 return stream.ToArray();
+            }
+        }
+
+        public void Load(byte[] data)
+        {
+            if (data.Length % 6 != 0)
+            {
+                Util.Log("Inventory data doesn't have correct length?! May be corrupted!!");
+                return;
+            }
+
+            int items = data.Length / 6;
+            using (var stream = new MemoryStream(data))
+            {
+                using (var bw = new BinaryReader(stream))
+                {
+                    for (int i = 0; i < items; i++)
+                    {
+                        short id = bw.ReadInt16();
+                        short flags = bw.ReadInt16();
+                        short amount = bw.ReadInt16();
+
+                        Console.WriteLine("ID: " + id + " FLAGS: " + flags + " AMOUNT: " + amount);
+                    }
+                }
             }
         }
 

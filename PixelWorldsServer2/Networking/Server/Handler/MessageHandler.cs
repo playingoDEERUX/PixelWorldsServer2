@@ -72,7 +72,8 @@ namespace PixelWorldsServer2.Networking.Server
                     BSONObject mObj = bObj[$"m{i}"] as BSONObject;
                     string mID = mObj[MsgLabels.MessageID];
 
-                    Console.WriteLine("Got message: " + mID);
+                    if (mID.ToLower() != "mp")
+                        Console.WriteLine("Got message: " + mID);
 
                     switch (mID)
                     {
@@ -115,11 +116,14 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
 
                     case "rOP": // request other players
+                        HandleSpawnPlayer(p, mObj);
                         HandleRequestOtherPlayers(p, mObj);
                         break;
 
                     case "RtP":
-                        HandleSpawnPlayer(p, mObj);
+                        if (p != null)
+                            p.Send(ref mObj);
+
                         break;
 
                     case MsgLabels.Ident.LeaveWorld:
@@ -266,6 +270,13 @@ namespace PixelWorldsServer2.Networking.Server
             var accHelper = pServer.GetAccountHelper();
 
             Player p = accHelper.LoginPlayer(cogID, cogToken, client.GetIPString());
+            if (p == null)
+            {
+                Util.Log("Player was null upon logon!!");
+                client.DisconnectLater();
+                return;
+            }
+
             uint userID = p.Data.UserID;
 
             if (!pServer.players.ContainsKey(userID))
@@ -543,13 +554,14 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             BSONObject pObj = new BSONObject("AnP");
+
+            
             foreach (var player in p.world.Players)
             {
                 if (player.Data.UserID == p.Data.UserID)
-                {
-                    Console.WriteLine("Players got equal userID??");
                     continue;
-                }
+
+                Console.WriteLine("Got userID (rOP): " + player.Data.UserID.ToString("X8"));
 
                 pObj["x"] = player.Data.PosX;
                 pObj["y"] = player.Data.PosY;
@@ -777,7 +789,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if (tile != null)
             {
-                if (tile.fg.id <= 0)
+                if (tile.fg.id <= 0 || tile.fg.id == 110)
                     return;
 
                 if (Util.GetSec() > tile.fg.lastHit + 4)

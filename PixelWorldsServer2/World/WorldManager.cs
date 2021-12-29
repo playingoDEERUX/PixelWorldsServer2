@@ -16,6 +16,8 @@ namespace PixelWorldsServer2.World
             this.pServer = pServer;
         }
 
+        public void Clear() => worlds.Clear();
+
         public WorldSession GetByName(string name, bool forceGen = false)
         {
             string worldName = name.ToUpper();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using FeatherNet;
 using Kernys.Bson;
 using PixelWorldsServer2.Database;
@@ -27,6 +28,30 @@ namespace PixelWorldsServer2.Networking.Server
         public WorldManager GetWorldManager() => worldManager;
         public AccountHelper GetAccountHelper() => accountHelper;
 
+        public void Shutdown()
+        {
+            lock (locker)
+            {
+                Util.Log("Server is shutting down...");
+
+                // will call destructors:
+                long ms = Util.GetMs();
+
+                fServer.Stop();
+                worldManager.Clear();
+               
+                foreach (var p in players.Values)
+                    p.Save();
+
+                players.Clear();
+
+                GC.Collect();
+
+                Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
+                Environment.Exit(0);
+            }
+        }
+
         public Player[] GetPlayersIngame()
         {
             List<Player> ingame = new List<Player>();
@@ -45,8 +70,8 @@ namespace PixelWorldsServer2.Networking.Server
         {
             Port = port;
             fServer = new FeatherServer(Port);
-            msgHandler = new MessageHandler(this);
             sqlManager = new SQLiteManager();
+            msgHandler = new MessageHandler(this);
             worldManager = new WorldManager(this);
             accountHelper = new AccountHelper(this);
         }
@@ -72,7 +97,7 @@ namespace PixelWorldsServer2.Networking.Server
                     client.Flush();
             }
 
-            if (Util.GetSec() > lastDiscordUpdateTime + 9)
+            if (Util.GetSec() > lastDiscordUpdateTime + 14)
             {
                 _ = DiscordBot.UpdateStatus($"Join {clients.Length} other players!");
                 lastDiscordUpdateTime = Util.GetSec();

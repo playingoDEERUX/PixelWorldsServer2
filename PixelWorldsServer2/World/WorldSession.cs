@@ -270,5 +270,10 @@ namespace PixelWorldsServer2.World
         {
             // load binary from table
         }
+
+        ~WorldSession()
+        {
+
+        }
     }
 }

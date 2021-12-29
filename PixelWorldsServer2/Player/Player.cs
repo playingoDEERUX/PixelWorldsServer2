@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SQLite;
 using System.Net.Sockets;
 using System.Numerics;
 using System.Text;
 using FeatherNet;
 using Kernys.Bson;
+using PixelWorldsServer2.Networking.Server;
 
 namespace PixelWorldsServer2
 {
     public class Player
     {
+        private PWServer pServer = null;
         public bool isInGame = false; // when the player has logon and is inside.
 
         public struct PlayerData
@@ -33,10 +36,11 @@ namespace PixelWorldsServer2
         public World.WorldSession world = null;
         public Player(FeatherClient fClient = null)
         {
-            this.fClient = fClient;
-
             if (fClient != null)
             {
+                this.fClient = fClient;
+                pServer = fClient.link as PWServer;
+
                 pData.player = this;
                 pData.UserID = 0;
                 pData.Gems = 0;
@@ -60,7 +64,14 @@ namespace PixelWorldsServer2
             pData.LastIP = (string)reader["IP"];
             pData.CognitoID = (string)reader["CognitoID"];
             pData.Token = (string)reader["Token"];
-            pData.Inventory = new PlayerInventory(); // todo load inv from sql
+
+            object inven = reader["Inventory"];
+            byte[] invData = null;
+
+            if (!Convert.IsDBNull(inven))
+                invData = (byte[])inven;
+
+            pData.Inventory = new PlayerInventory(invData); // todo load inv from sql
         }
 
         public FeatherClient Client { get { return fClient; } }
@@ -94,7 +105,46 @@ namespace PixelWorldsServer2
             Send(ref p);
         }
 
-        public void SetClient(FeatherClient fClient) => this.fClient = fClient;
+        public void SetClient(FeatherClient fClient) 
+        {
+            this.fClient = fClient;
+
+            if (fClient != null)
+            {
+                if (fClient.link != null)
+                    pServer = fClient.link as PWServer;
+            }
+        }
         public void Send(ref BSONObject packet) => packets.Add(packet);
+
+        public void Save()
+        {
+            Util.Log($"Attempting to save {Data.Name}");
+
+            if (pServer == null)
+                return; // No need to save, there has never been a client to perform any changes on the data anyway.
+
+            var sql = pServer.GetSQL();
+            var cmd = sql.Make("UPDATE players SET Gems=@Gems, ByteCoins=@ByteCoins, IP=@IP, Inventory=@Inventory WHERE ID=@ID");
+            cmd.Parameters.AddWithValue("@Gems", Data.Gems);
+            cmd.Parameters.AddWithValue("@ByteCoins", Data.Coins);
+            cmd.Parameters.AddWithValue("@IP", Data.LastIP);
+
+            byte[] invData = Data.Inventory.Serialize();
+            cmd.Parameters.Add("@Inventory", DbType.Binary);
+            cmd.Parameters["@Inventory"].Value = invData;
+
+            cmd.Parameters.AddWithValue("@ID", Data.UserID);
+
+            if (sql.PreparedQuery(cmd) > 0)
+            {
+                Util.Log($"Player ID: {Data.UserID} ('{Data.Name}') saved.");
+            }
+        }
+
+        ~Player()
+        {
+            Save();
+        }
     }
 }

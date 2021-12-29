@@ -249,7 +249,7 @@ namespace FeatherNet
             this.client.Close();
         }
 
-        public FeatherEvent Ping()
+        private FeatherEvent Ping()
         {
             FeatherEvent ev = new FeatherEvent();
             ev.client = this;
@@ -258,7 +258,7 @@ namespace FeatherNet
             return ev;
         }
 
-        public FeatherEvent Disconnect(bool timeout = false)
+        private FeatherEvent Disconnect(bool timeout = false)
         {
             disconnectLater = false;
 
@@ -277,7 +277,7 @@ namespace FeatherNet
 
         public void Timeout() => this.timedOut = true;
         public void DisconnectLater() => this.disconnectLater = true;
-        public FeatherEvent Receive(byte[] buffer)
+        private FeatherEvent Receive(byte[] buffer)
         {
             FeatherEvent ev = new FeatherEvent();
             ev.client = this;
@@ -376,6 +376,18 @@ namespace FeatherNet
             }
             catch (SocketException) { return false; }
             return true;
+        }
+
+        public void Stop()
+        {
+            if (listener == null)
+                return;
+
+            try
+            {
+                listener.Stop();
+            }
+            catch (SocketException) { }
         }
 
         private List<FeatherEvent> CheckIncomingConnections()
