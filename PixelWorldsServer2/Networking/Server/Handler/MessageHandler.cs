@@ -72,7 +72,7 @@ namespace PixelWorldsServer2.Networking.Server
                     BSONObject mObj = bObj[$"m{i}"] as BSONObject;
                     string mID = mObj[MsgLabels.MessageID];
 
-                    //Console.WriteLine("Got message: " + mID);
+                    Console.WriteLine("Got message: " + mID);
 
                     switch (mID)
                     {
@@ -92,6 +92,10 @@ namespace PixelWorldsServer2.Networking.Server
 
                     case MsgLabels.Ident.TryToJoinWorld:
                         HandleTryToJoinWorld(p, mObj);
+                        break;
+
+                    case "TTJWR":
+                        HandleTryToJoinWorldRandom(p);
                         break;
 
                     case MsgLabels.Ident.GetWorld:
@@ -130,9 +134,82 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleRequestAIp(p, mObj);
                         break;
 
+                    case "Rez":
+                        if (p == null)
+                            break;
+
+                        if (p.world == null)
+                            break;
+
+                        mObj["U"] = p.Data.UserID.ToString("X8");
+                        p.world.Broadcast(ref mObj, p);
+                        break;
+
+                    case MsgLabels.Ident.WearableUsed:
+                    case MsgLabels.Ident.WearableRemoved:
+                        {
+                            if (p == null)
+                                break;
+
+                            if (p.world == null)
+                                break;
+
+                            int id = mObj["hBlock"];
+                            if (id < 0 || id >= ItemDB.ItemsCount()) break;
+
+                            Item it = ItemDB.GetByID(id);
+
+
+                            mObj[MsgLabels.UserID] = p.Data.UserID.ToString("X8");
+                            p.world.Broadcast(ref mObj, p);
+                            break;
+                        }
+
                     case "RsP":
                         HandleRespawn(p, mObj);
                         break;
+
+                    case "GAW":
+                        HandleGetActiveWorlds(p);
+                        break;
+
+                    case "TDmg":
+                        {
+                            if (p != null)
+                            {
+                                if (p.world != null)
+                                {
+
+                                    BSONObject rsp = new BSONObject();
+                                    rsp["ID"] = "UD";
+                                    rsp["U"] = p.Data.UserID.ToString("X8");
+                                    rsp["x"] = p.world.SpawnPointX;
+                                    rsp["y"] = p.world.SpawnPointY;
+                                    rsp["DBl"] = 0;
+                                    p.world.Broadcast(ref rsp);
+                                    p.Send(ref mObj);
+                                }
+                            }
+                            break;
+                        }
+                    case "PDC":
+                        {
+                            if (p != null)
+                            {
+                                if (p.world != null)
+                                {
+                                    BSONObject rsp = new BSONObject();
+                                    rsp["ID"] = "UD";
+                                    rsp["U"] = p.Data.UserID.ToString("X8");
+                                    rsp["x"] = p.world.SpawnPointX;
+                                    rsp["y"] = p.world.SpawnPointY;
+                                    rsp["DBl"] = 0;
+                                    p.world.Broadcast(ref rsp);
+                                    p.Send(ref mObj);
+                                }
+                            }
+                            break;
+                        }
 
                     case MsgLabels.Ident.MovePlayer:
                         HandleMovePlayer(p, mObj);
@@ -159,6 +236,7 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
 
                     default:
+                        pServer.onPing(client, 0);
                         break;
 
                     }
@@ -372,7 +450,7 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
 
-            bObj["U"] = p.Data.UserID;
+            bObj["U"] = p.Data.UserID.ToString("X8");
             p.world.Broadcast(ref bObj, p);
         }
 
@@ -568,6 +646,34 @@ namespace PixelWorldsServer2.Networking.Server
             p.Send(ref bObj);
         }
 
+        public void HandleGetActiveWorlds(Player p)
+        {
+            if (p == null)
+                return;
+
+            BSONObject resp = new BSONObject("GAW");
+
+            List<string> worldIDs = new List<string>();
+            List<string> worldNames = new List<string>();
+            List<int> playerCounts = new List<int>();
+
+            foreach (var world in pServer.GetWorldManager().GetWorlds())
+            {
+                int pC = world.Players.Count;
+                if (pC > 0)
+                {
+                    worldIDs.Add(world.WorldID.ToString("X8"));
+                    worldNames.Add(world.WorldName);
+                    playerCounts.Add(pC);
+                }
+            }
+
+            resp["W"] = worldIDs;
+            resp["WN"] = worldNames;
+            resp["Ct"] = playerCounts;
+            p.Send(ref resp);
+        }
+
         public void HandleRequestAIp(Player p, BSONObject bObj)
         {
             if (p == null)
@@ -577,6 +683,19 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             p.Send(ref bObj);
+        }
+
+        public void HandleTryToJoinWorldRandom(Player p)
+        {
+            var worlds = pServer.GetWorldManager().GetWorlds();
+
+            if (worlds.Count > 0)
+            {
+                var w = worlds[new Random().Next(worlds.Count)];
+                bObj["W"] = w.WorldName;
+
+                HandleTryToJoinWorld(p, bObj);
+            }
         }
 
         public void HandleRespawn(Player p, BSONObject bObj)
@@ -694,7 +813,7 @@ namespace PixelWorldsServer2.Networking.Server
             short blockType = (short)bObj["BlockType"];
             Item it = ItemDB.GetByID(blockType);
            
-            bObj["U"] = p.Data.UserID;
+            bObj["U"] = p.Data.UserID.ToString("X8");
 
             switch (it.type)
             {
@@ -738,7 +857,7 @@ namespace PixelWorldsServer2.Networking.Server
             short blockType = (short)bObj["BlockType"];
             Item it = ItemDB.GetByID(blockType);
 
-            bObj["U"] = p.Data.UserID;
+            bObj["U"] = p.Data.UserID.ToString("X8");
 
 
             var t = w.GetTile(x, y);

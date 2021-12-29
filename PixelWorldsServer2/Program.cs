@@ -70,10 +70,14 @@ namespace PixelWorldsServer2
             if (pwServer.Start())
             {
                 Util.Log($"Pixel Worlds Server (0.1.1) has been started. Hosting now at port {pwServer.Port}!");
-                Util.Log("Initializing Discord Bot...");
+
+#if DEBUG
+#else
+Util.Log("Initializing Discord Bot...");
                 DiscordBot.Init();
                 Util.Log("Discord Bot OK!");
-                
+#endif
+
                 while (pwServer.GetServer() != null)
                     pwServer.Host();
             }

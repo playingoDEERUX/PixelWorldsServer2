@@ -118,7 +118,8 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
-        private void onPing(FeatherClient client, int flags)
+        // onPing is used for other stuff too so it's public here...
+        public void onPing(FeatherClient client, int flags)
         {
             if (client == null)
                 return;

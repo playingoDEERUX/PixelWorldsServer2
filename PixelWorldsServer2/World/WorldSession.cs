@@ -24,16 +24,29 @@ namespace PixelWorldsServer2.World
 
         public void AddPlayer(Player p)
         {
-            if (!players.Contains(p))
+            if (HasPlayer(p) == -1)
                 players.Add(p);
 
             p.world = this;
         }
 
+        public int HasPlayer(Player p)
+        {
+            for (int i = 0; i < players.Count; i++)
+            {
+                if (p.Data.UserID == players[i].Data.UserID)
+                    return i;
+            }
+
+            return -1;
+        }
+
         public void RemovePlayer(Player p)
         {
-            if (players.Contains(p))
-                players.Remove(p);
+            int idx = HasPlayer(p);
+
+            if (idx >= 0)
+                players.RemoveAt(idx);
 
             p.world = null;
         }
