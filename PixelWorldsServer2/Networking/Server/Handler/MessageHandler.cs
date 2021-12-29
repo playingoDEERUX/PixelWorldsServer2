@@ -692,6 +692,8 @@ namespace PixelWorldsServer2.Networking.Server
             if (worlds.Count > 0)
             {
                 var w = worlds[new Random().Next(worlds.Count)];
+
+                BSONObject bObj = new BSONObject();
                 bObj["W"] = w.WorldName;
 
                 HandleTryToJoinWorld(p, bObj);
