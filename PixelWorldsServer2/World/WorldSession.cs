@@ -6,13 +6,15 @@ using System.IO;
 using Kernys.Bson;
 using PixelWorldsServer2.DataManagement;
 using System.Linq;
+using static PixelWorldsServer2.World.WorldInterface;
 
 namespace PixelWorldsServer2.World
 {
-    public  class WorldSession
+    public class WorldSession
     {
         private PWServer pServer = null;
         private List<Player> players = new List<Player>();
+        private List<Collectable> collectables = new List<Collectable>();
         public uint WorldID = 0;
         public short SpawnPointX = 36, SpawnPointY = 24;
         public string WorldName = string.Empty;
@@ -39,6 +41,40 @@ namespace PixelWorldsServer2.World
             }
 
             return -1;
+        }
+
+        public void AddCollectable(Collectable c) => collectables.Add(c);
+
+        private int GetCollectableIndex(uint colID)
+        {
+            for (int i = 0; i < collectables.Count; i++)
+            {
+                if (collectables[i].cID == colID)
+                    return i;
+            }
+            return -1;
+        }
+
+        public void GetCollectable(uint colID, out Collectable c)
+        {
+            int i = GetCollectableIndex(colID);
+
+            c = new Collectable();
+            c.cID = 0;
+
+            if (i > -1)
+                c = collectables[i];
+        }
+        public bool RemoveCollectableByID(uint colID)
+        {
+            int idx = GetCollectableIndex(colID);
+           
+            if (idx > -1)
+            {
+                collectables.RemoveAt(idx);
+                return true;
+            }
+            return false;
         }
 
         public void RemovePlayer(Player p)
@@ -108,6 +144,7 @@ namespace PixelWorldsServer2.World
             var sql = pServer.GetSQL();
             if (sql.Query($"INSERT INTO worlds (Name) VALUES ('{name}')") > 0)
             {
+                SpawnPointX = (short)(1 + new Random().Next(79));
                 WorldID = (uint)sql.GetLastInsertID();
                 WorldName = name;
 

@@ -1,4 +1,5 @@
-﻿using Kernys.Bson;
+﻿using BasicTypes;
+using Kernys.Bson;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -2864,6 +2865,15 @@ namespace PixelWorldsServer2.World
 			// Token: 0x040019DC RID: 6620
 			HalloweenTower
 		}
+
+		public struct Collectable
+        {
+			public uint cID;
+			public short item;
+			public short amt;
+			public Vector2i pos;
+			public short gemType; // over -1: is a gem as well and has a type.
+        }
 
 		public BSONObject Serialize();
     }

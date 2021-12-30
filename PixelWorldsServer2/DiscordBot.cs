@@ -37,9 +37,6 @@ namespace PixelWorldsServer2
 
         public static async Task Login()
         {
-            if (_client.LoginState == LoginState.LoggedIn || _client.LoginState == LoginState.LoggingIn)
-                await _client.LogoutAsync();
-
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
         }

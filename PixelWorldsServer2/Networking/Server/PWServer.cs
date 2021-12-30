@@ -37,7 +37,7 @@ namespace PixelWorldsServer2.Networking.Server
                 // will call destructors:
                 long ms = Util.GetMs();
 
-                fServer.Stop();
+                //fServer.Stop();
                 worldManager.Clear();
                
                 foreach (var p in players.Values)
@@ -84,10 +84,14 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void Tick()
         {
+            int playersOn = 0;
             foreach (var p in players.Values)
             {
                 if (p.isInGame)
+                {
+                    playersOn++;
                     p.Tick();
+                }
             }
 
             var clients = fServer.GetClients();
@@ -97,9 +101,9 @@ namespace PixelWorldsServer2.Networking.Server
                     client.Flush();
             }
 
-            if (Util.GetSec() > lastDiscordUpdateTime + 14)
+            if (Util.GetSec() > lastDiscordUpdateTime + 20)
             {
-                _ = DiscordBot.UpdateStatus($"Join {clients.Length} other players!");
+                _ = DiscordBot.UpdateStatus($"Join {playersOn} other players!");
                 lastDiscordUpdateTime = Util.GetSec();
             }
         }

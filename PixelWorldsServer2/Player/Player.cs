@@ -119,10 +119,10 @@ namespace PixelWorldsServer2
 
         public void Save()
         {
-            Util.Log($"Attempting to save {Data.Name}");
-
             if (pServer == null)
                 return; // No need to save, there has never been a client to perform any changes on the data anyway.
+
+            Util.Log("Saving player...");
 
             var sql = pServer.GetSQL();
             var cmd = sql.Make("UPDATE players SET Gems=@Gems, ByteCoins=@ByteCoins, IP=@IP, Inventory=@Inventory WHERE ID=@ID");
@@ -140,11 +140,6 @@ namespace PixelWorldsServer2
             {
                 Util.Log($"Player ID: {Data.UserID} ('{Data.Name}') saved.");
             }
-        }
-
-        ~Player()
-        {
-            Save();
         }
     }
 }

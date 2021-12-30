@@ -88,7 +88,7 @@ namespace PixelWorldsServer2
                         short flags = bw.ReadInt16();
                         short amount = bw.ReadInt16();
 
-                        Console.WriteLine("ID: " + id + " FLAGS: " + flags + " AMOUNT: " + amount);
+                        Items.Add(new InventoryItem(id, flags, amount));
                     }
                 }
             }
