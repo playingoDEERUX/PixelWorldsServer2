@@ -28,7 +28,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 16; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 15; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MAX_PACKET_SIZE = 160000;
@@ -484,7 +484,7 @@ namespace FeatherNet
                 }
             }
 
-            if (events.Length == 0)
+            if (events.Length <= 1)
                 Thread.Sleep(timeout);
 
             return events;

@@ -101,7 +101,7 @@ namespace PixelWorldsServer2.Networking.Server
                     client.Flush();
             }
 
-            if (Util.GetSec() > lastDiscordUpdateTime + 20)
+            if (Util.GetSec() > lastDiscordUpdateTime + 14)
             {
                 _ = DiscordBot.UpdateStatus($"Join {playersOn} other players!");
                 lastDiscordUpdateTime = Util.GetSec();
