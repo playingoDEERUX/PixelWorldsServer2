@@ -95,9 +95,9 @@ namespace FeatherNet
                 lock (pServer.locker)
                 {
                     continueNetwork = client.Connected && !isTimedOut() && !isDisconnecting();
-                    if (recv < 0 || recv >= FeatherDefaults.BUFFER_SIZE)
+                    if (recv <= 0 || recv >= FeatherDefaults.BUFFER_SIZE)
                     {
-                        Timeout();
+                        DisconnectLater();
                         return;
                     }
 
