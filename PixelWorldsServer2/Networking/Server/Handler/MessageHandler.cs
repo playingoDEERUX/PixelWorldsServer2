@@ -52,8 +52,8 @@ namespace PixelWorldsServer2.Networking.Server
                     BSONObject mObj = bObj[$"m{i}"] as BSONObject;
                     string mID = mObj[MsgLabels.MessageID];
 
-                    //if (mID.ToLower() != "mp")
-                        //Console.WriteLine("Got message: " + mID);
+                    if (mID.ToLower() != "mp")
+                        Console.WriteLine("Got message: " + mID);
 
                     switch (mID)
                     {
@@ -69,6 +69,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                     case MsgLabels.Ident.GetPlayerData:
                         HandlePlayerLogon(client, mObj);
+                        p = client.data == null ? null : ((Player.PlayerData)client.data).player; // update it here!
                         break;
 
                     case MsgLabels.Ident.TryToJoinWorld:
@@ -95,15 +96,16 @@ namespace PixelWorldsServer2.Networking.Server
                         HandlePlayerStatusChange(p, mObj);
                         break;
 
+                    case "RenamePlayer":
+                        HandleRenamePlayer(p, mObj);
+                        break;
+
                     case "rOP": // request other players
                         HandleSpawnPlayer(p, mObj);
                         HandleRequestOtherPlayers(p, mObj);
                         break;
 
                     case "RtP":
-                        if (p != null)
-                            p.Send(ref mObj);
-
                         break;
 
                     case MsgLabels.Ident.LeaveWorld:
@@ -242,6 +244,13 @@ namespace PixelWorldsServer2.Networking.Server
                 Util.Log("Player was null upon logon!!");
                 client.DisconnectLater();
                 return;
+            }
+
+            if (p.Client == null)
+            {
+                Util.Log("Client was null, so setting it here!");
+                p.SetClient(client);
+                client.data = p.Data;
             }
 
             uint userID = p.Data.UserID;
@@ -402,7 +411,7 @@ namespace PixelWorldsServer2.Networking.Server
                 }
 
                 bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
-                    p.world.WorldID.ToString("X8"),
+                    p.world.WorldName,
                     p.world.WorldName,
                     1,
                     res);
@@ -439,6 +448,13 @@ namespace PixelWorldsServer2.Networking.Server
 
             bObj["U"] = p.Data.UserID.ToString("X8");
             p.world.Broadcast(ref bObj, p);
+        }
+
+        public void HandleRenamePlayer(Player p, BSONObject bObj)
+        {
+            string username = bObj["UN"];
+
+            p.Send(ref bObj);
         }
 
         public void HandleTryToJoinWorld(Player p, BSONObject bObj)
@@ -541,7 +557,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 pObj["x"] = player.Data.PosX;
                 pObj["y"] = player.Data.PosY;
-                pObj["t"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                pObj["t"] = Util.GetKukouriTime();
                 pObj["a"] = player.Data.Anim;
                 pObj["d"] = player.Data.Dir;
                 List<int> spotsList = new List<int>();
@@ -551,7 +567,7 @@ namespace PixelWorldsServer2.Networking.Server
                 pObj["familiar"] = 0;
                 pObj["familiarName"] = "";
                 pObj["familiarLvl"] = 0;
-                pObj["familiarAge"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                pObj["familiarAge"] = Util.GetKukouriTime();
                 pObj["isFamiliarMaxLevel"] = false;
                 pObj["UN"] = player.Data.Name;
                 pObj["U"] = player.Data.UserID.ToString("X8");
@@ -569,7 +585,8 @@ namespace PixelWorldsServer2.Networking.Server
                 pObj["faceAnim"] = 0;
                 pObj["inPortal"] = false;
                 pObj["SIc"] = 0;
-                pObj["VIPEndTimeAge"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                pObj["D"] = 0;
+                pObj["VIPEndTimeAge"] = Util.GetKukouriTime();
                 pObj["IsVIP"] = false;
 
                 p.Send(ref pObj);
@@ -602,7 +619,7 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["familiar"] = 0;
             pObj["familiarName"] = "";
             pObj["familiarLvl"] = 0;
-            pObj["familiarAge"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            pObj["familiarAge"] = Util.GetKukouriTime();
             pObj["isFamiliarMaxLevel"] = false;
             pObj["UN"] = p.Data.Name;
             pObj["U"] = p.Data.UserID.ToString("X8");
@@ -620,7 +637,7 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["faceAnim"] = 0;
             pObj["inPortal"] = false;
             pObj["SIc"] = 0;
-            pObj["VIPEndTimeAge"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            pObj["VIPEndTimeAge"] = Util.GetKukouriTime();
             pObj["IsVIP"] = false;
 
             p.world.Broadcast(ref pObj, p);
@@ -640,8 +657,6 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             BSONObject resp = new BSONObject("GAW");
-
-            List<string> worldIDs = new List<string>();
             List<string> worldNames = new List<string>();
             List<int> playerCounts = new List<int>();
 
@@ -650,13 +665,12 @@ namespace PixelWorldsServer2.Networking.Server
                 int pC = world.Players.Count;
                 if (pC > 0)
                 {
-                    worldIDs.Add(world.WorldID.ToString("X8"));
                     worldNames.Add(world.WorldName);
                     playerCounts.Add(pC);
                 }
             }
 
-            resp["W"] = worldIDs;
+            resp["W"] = worldNames;
             resp["WN"] = worldNames;
             resp["Ct"] = playerCounts;
             p.Send(ref resp);
@@ -680,6 +694,8 @@ namespace PixelWorldsServer2.Networking.Server
 
             if (p.world == null)
                 return;
+
+            Util.LogBSONInDepth(bObj);
 
             int id = bObj["hBlock"];
 

@@ -2866,7 +2866,7 @@ namespace PixelWorldsServer2.World
 			HalloweenTower
 		}
 
-		public struct Collectable
+		public class Collectable
         {
 			public uint cID;
 			public short item;

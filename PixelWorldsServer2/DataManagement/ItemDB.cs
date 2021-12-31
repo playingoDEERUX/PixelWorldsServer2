@@ -36,13 +36,16 @@ namespace PixelWorldsServer2.DataManagement
         public string name;
         public short ID;
         public short type;
+        public short hitsRequired;
 
-        public Item(string _name, short _ID, short _type, short _hotspotType = -1)
+        public Item(string _name, short _ID, short _type, 
+            short _hotspotType = -1, short _hitsRequired = 3)
         {
             name = _name;
             ID = _ID;
             type = _type;
             hotspotType = _hotspotType;
+            hitsRequired = _hitsRequired;
         }
     }
     public class ItemDB
@@ -136,13 +139,13 @@ namespace PixelWorldsServer2.DataManagement
             foreach (string line in content)
             {
                 string[] args = line.Split("|");
-                string aID = args[0]; string aName = args[1]; string aType = args[2];
 
                 Item item;
-                item.ID = short.Parse(aID);
-                item.name = aName;
-                item.type = short.Parse(aType);
+                item.ID = short.Parse(args[0]);
+                item.name = args[1];
+                item.type = short.Parse(args[2]);
                 item.hotspotType = -1;
+                item.hitsRequired = short.Parse(args[6]);
 
                 items.Add(item);
             }

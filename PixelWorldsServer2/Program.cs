@@ -55,13 +55,14 @@ namespace PixelWorldsServer2
                     "ByteCoins int NOT NULL DEFAULT '0'," +
                     "Settings int NOT NULL DEFAULT '0'," +
                     "Inventory varbinary(6144) DEFAULT NULL)");
-
-                pSQL.Query("CREATE TABLE IF NOT EXISTS worlds (ID INTEGER PRIMARY KEY NOT NULL, Name varchar(32) NOT NULL DEFAULT '')");
             }
             else
             {
                 Util.Log("Error SQLite database failed! Continuing... (saving of data may not work)");
             }
+
+            if (!Directory.Exists("maps"))
+                Directory.CreateDirectory("maps");
 
             ItemDB.Initialize();
             Util.Log("ItemDB initialized!");

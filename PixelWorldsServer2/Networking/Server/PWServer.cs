@@ -30,26 +30,23 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void Shutdown()
         {
-            lock (locker)
-            {
-                Util.Log("Server is shutting down...");
+            Util.Log("Server is shutting down...");
 
-                // will call destructors:
-                long ms = Util.GetMs();
+            // will call destructors:
+            long ms = Util.GetMs();
 
-                //fServer.Stop();
-                worldManager.Clear();
-               
-                foreach (var p in players.Values)
-                    p.Save();
+            //fServer.Stop();
 
-                players.Clear();
+            worldManager.SaveAll();
+            worldManager.Clear();
 
-                GC.Collect();
+            foreach (var p in players.Values)
+                p.Save();
 
-                Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
-                Environment.Exit(0);
-            }
+            players.Clear();
+
+            Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
+            Environment.Exit(0);
         }
 
         public Player[] GetPlayersIngame()
@@ -115,9 +112,13 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void Host()
         {
+            bool sleep = false;
             lock (locker)
             {
                 var evs = fServer.Service(1);
+                if (evs.Length == 0)
+                    sleep = true;
+
                 foreach (var ev in evs)
                 {
                     switch (ev.type)
@@ -145,6 +146,9 @@ namespace PixelWorldsServer2.Networking.Server
 
                 Tick();
             }
+
+            if (sleep)
+                Thread.Sleep(1);
         }
 
         // onPing is used for other stuff too so it's public here...

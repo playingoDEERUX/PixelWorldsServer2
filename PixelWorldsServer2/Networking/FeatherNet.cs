@@ -72,13 +72,12 @@ namespace FeatherNet
             {
                 var ns = client.GetStream();
                 ns.EndWrite(i);
-
-                StartReading(link as PWServer);
             }
-            catch
-            {
+            catch (ArgumentNullException) { }
+            catch (IOException) { }
+            catch (InvalidOperationException) { }
 
-            }
+            StartReading(link as PWServer);
         }
 
         private void OnEndRead(IAsyncResult i)
@@ -134,10 +133,9 @@ namespace FeatherNet
                     }
                 }
             }
-            catch
-            {
-
-            }
+            catch (InvalidOperationException) { }
+            catch (ArgumentOutOfRangeException) { }
+            catch (IOException) { }
         }
         public void StartReading(PWServer server)
         {
@@ -418,16 +416,14 @@ namespace FeatherNet
             {
                 var ev = fClient.CheckTimeout();
 
-                if (ev.type != FeatherEvent.Types.NONE)
+                if (ev.type == FeatherEvent.Types.PING_NOW)
+                    fClient.pingMul++;
+                else if (ev.type == FeatherEvent.Types.DISCONNECT)
                 {
-                    if (ev.type == FeatherEvent.Types.PING_NOW)
-                        fClient.pingMul++;
-                    else if (ev.type == FeatherEvent.Types.DISCONNECT)
-                    {
-                        events.Add(ev);
-                        continue; // dont handle this any further!
-                    }
+                    events.Add(ev);
+                    continue; // dont handle this any further!
                 }
+            
 
                 if (fClient.isTimedOut() || !fClient.isConnected())
                     continue; // user supposed to time-out later, receiving any packets is not permitted.
@@ -440,7 +436,8 @@ namespace FeatherNet
                     fClient.incomingEvents.RemoveAt(0);
                 }
 
-                events.Add(ev);
+                if (ev.type != FeatherEvent.Types.NONE)
+                    events.Add(ev);
             }
 
             return events;
@@ -483,9 +480,6 @@ namespace FeatherNet
                         break;
                 }
             }
-
-            if (events.Length <= 1)
-                Thread.Sleep(timeout);
 
             return events;
         }

@@ -13,6 +13,7 @@ namespace PixelWorldsServer2.World
     public class WorldSession
     {
         private PWServer pServer = null;
+        private byte version = 0x1;
         private List<Player> players = new List<Player>();
         private List<Collectable> collectables = new List<Collectable>();
         public uint WorldID = 0;
@@ -106,12 +107,9 @@ namespace PixelWorldsServer2.World
             // load from SQL and File, if it doesn't exist, then generate.
             // first retrieve worldID, name, metadata... if fail, then generate world.
             this.pServer = pServer;
+            string path = $"maps/{worldName}.map";
 
-            var sql = pServer.GetSQL();
-            var res = sql.FetchQuery(string.Format("SELECT * FROM worlds WHERE Name='{0}'",
-                worldName));
-
-            if (!res.Read())
+            if (!File.Exists(path))
             {
 #if DEBUG
                 Console.WriteLine("Generating new world with name: " + worldName);
@@ -122,18 +120,8 @@ namespace PixelWorldsServer2.World
             }
 
             Console.WriteLine("Attempting to load world from DB...");
-
-            WorldID = (uint)(long)res["ID"];
-            WorldName = (string)res["Name"];
-
-            string path = $"maps/{WorldID}.map";
-            if (!File.Exists(path))
-            {
-                Console.WriteLine($"Cannot deserialize tile data, as map file ({path}) does not exist! Regenerating the world...");
-                Generate(worldName);
-                return;
-            }
-            Deserialize(File.ReadAllBytes(path));
+            Deserialize(Util.LZMAHelper.DecompressLZMA(File.ReadAllBytes(path)));
+            this.WorldName = worldName;
         }
 
         public void Generate(string name)
@@ -142,14 +130,10 @@ namespace PixelWorldsServer2.World
             // todo filter the name from bad shit b4 release...
 
             var sql = pServer.GetSQL();
-            if (sql.Query($"INSERT INTO worlds (Name) VALUES ('{name}')") > 0)
-            {
-                SpawnPointX = (short)(1 + new Random().Next(79));
-                WorldID = (uint)sql.GetLastInsertID();
-                WorldName = name;
+            SpawnPointX = (short)(1 + new Random().Next(79));
+            WorldName = name;
 
-                SetupTerrain();
-            }
+            SetupTerrain();
         }
 
         public void SetupTerrain()
@@ -219,7 +203,7 @@ namespace PixelWorldsServer2.World
             }
 
             wObj[MsgLabels.MessageID] = MsgLabels.Ident.GetWorld;
-            wObj["World"] = WorldID.ToString("X8");
+            wObj["World"] = WorldName;
             wObj["BlockLayer"] = blockLayerData;
             wObj["BackgroundLayer"] = backgroundLayerData;
             wObj["WaterLayer"] = waterLayerData;
@@ -305,7 +289,33 @@ namespace PixelWorldsServer2.World
 
         public void Deserialize(byte[] binary)
         {
-            // load binary from table
+            // load binary from file
+            tiles = new WorldTile[80, 60]; // only this dimension is supported anyways
+            for (int i = 0; i < tiles.GetLength(1); i++)
+            {
+                for (int j = 0; j < tiles.GetLength(0); j++)
+                {
+                    tiles[j, i] = new WorldTile();
+                }
+            }
+
+            version = binary[0];
+
+            int pos = 1;
+            for (int y = 0; y < GetSizeY(); y++)
+            {
+                for (int x = 0; x < GetSizeX(); x++)
+                {
+                    var tile = tiles[x, y];
+
+                    tile.fg.id = BitConverter.ToInt16(binary, pos);
+                    tile.bg.id = BitConverter.ToInt16(binary, pos + 2);
+                    tile.water.id = BitConverter.ToInt16(binary, pos + 4);
+                    tile.wire.id = BitConverter.ToInt16(binary, pos + 6);
+
+                    pos += 8;
+                }
+            }
         }
 
         ~WorldSession()
