@@ -117,6 +117,14 @@ namespace PixelWorldsServer2
         }
         public void Send(ref BSONObject packet) => packets.Add(packet);
 
+        public void RemoveGems(int amt)
+        {
+            Data.Gems -= amt;
+            BSONObject bObj = new BSONObject("RG");
+            bObj["Amt"] = amt;
+
+            Send(ref bObj);
+        }
         public void Save()
         {
             if (pServer == null)

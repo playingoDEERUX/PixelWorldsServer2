@@ -59,7 +59,7 @@ namespace PixelWorldsServer2.Networking.Server
             if (sql.PreparedQuery(cmd) > 0)
             {
                 var p = new Player();
-
+                p.Data.player = p;
                 p.Data.UserID = (uint)sql.GetLastInsertID();
                 p.Data.CognitoID = cogID;
                 p.Data.Token = cogToken;

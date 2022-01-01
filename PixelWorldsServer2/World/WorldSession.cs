@@ -15,7 +15,8 @@ namespace PixelWorldsServer2.World
         private PWServer pServer = null;
         private byte version = 0x1;
         private List<Player> players = new List<Player>();
-        private List<Collectable> collectables = new List<Collectable>();
+        public Dictionary<int, Collectable> collectables = new Dictionary<int, Collectable>();
+        public int colID = 0;
         public uint WorldID = 0;
         public short SpawnPointX = 36, SpawnPointY = 24;
         public string WorldName = string.Empty;
@@ -23,8 +24,8 @@ namespace PixelWorldsServer2.World
         public int GetSizeX() => tiles.GetUpperBound(0) + 1;
         public int GetSizeY() => tiles.GetUpperBound(1) + 1;
 
+        public uint OwnerID = 0;
         public List<Player> Players => players;
-
         public void AddPlayer(Player p)
         {
             if (HasPlayer(p) == -1)
@@ -43,41 +44,6 @@ namespace PixelWorldsServer2.World
 
             return -1;
         }
-
-        public void AddCollectable(Collectable c) => collectables.Add(c);
-
-        private int GetCollectableIndex(uint colID)
-        {
-            for (int i = 0; i < collectables.Count; i++)
-            {
-                if (collectables[i].cID == colID)
-                    return i;
-            }
-            return -1;
-        }
-
-        public void GetCollectable(uint colID, out Collectable c)
-        {
-            int i = GetCollectableIndex(colID);
-
-            c = new Collectable();
-            c.cID = 0;
-
-            if (i > -1)
-                c = collectables[i];
-        }
-        public bool RemoveCollectableByID(uint colID)
-        {
-            int idx = GetCollectableIndex(colID);
-           
-            if (idx > -1)
-            {
-                collectables.RemoveAt(idx);
-                return true;
-            }
-            return false;
-        }
-
         public void RemovePlayer(Player p)
         {
             int idx = HasPlayer(p);
@@ -86,6 +52,15 @@ namespace PixelWorldsServer2.World
                 players.RemoveAt(idx);
 
             p.world = null;
+        }
+
+        public void RemoveCollectable(int colID, Player toIgnore = null)
+        {
+            collectables.Remove(colID);
+            BSONObject bObj = new BSONObject("RC");
+            bObj["CollectableID"] = colID;
+
+            Broadcast(ref bObj, toIgnore);
         }
 
         public void Broadcast(ref BSONObject bObj, params Player[] ignored) // ignored player can be used to ignore packet being sent to player itself.
@@ -97,6 +72,32 @@ namespace PixelWorldsServer2.World
 
                 p.Send(ref bObj);
             }
+        }
+
+        public void Drop(int id, int amt, double posX, double posY, int gem = -1)
+        {
+            int cId = ++colID;
+            BSONObject cObj = new BSONObject("nCo");
+            cObj["CollectableID"] = cId;
+            cObj["BlockType"] = id;
+            cObj["Amount"] = amt; // HACK
+            cObj["InventoryType"] = gem < 0 ? ItemDB.GetByID(id).type : 0;
+
+            Collectable c = new Collectable();
+            c.amt = (short)amt;
+            c.item = (short)id;
+            c.posX = posX * Math.PI;
+            c.posY = posY * Math.PI;
+            c.gemType = (short)gem;
+
+            cObj["PosX"] = c.posX;
+            cObj["PosY"] = c.posY;
+            cObj["IsGem"] = c.gemType > -1;
+            cObj["GemType"] = c.gemType < 0 ? 0 : c.gemType;
+            
+            collectables[cId] = c;
+
+            Broadcast(ref cObj);
         }
 
         public WorldSession(PWServer pServer, string worldName = "")
@@ -194,10 +195,9 @@ namespace PixelWorldsServer2.World
                 if (x == SpawnPointX && y == SpawnPointY)
                     tiles[x, y].fg.id = 110;
 
-
                 if (tiles[x, y].fg.id != 0) Buffer.BlockCopy(BitConverter.GetBytes(tiles[x, y].fg.id), 0, blockLayerData, pos, 2);
                 if (tiles[x, y].bg.id != 0) Buffer.BlockCopy(BitConverter.GetBytes(tiles[x, y].bg.id), 0, backgroundLayerData, pos, 2);
-                if (tiles[x, y].water.id!= 0) Buffer.BlockCopy(BitConverter.GetBytes(tiles[x, y].water.id), 0, waterLayerData, pos, 2);
+                if (tiles[x, y].water.id != 0) Buffer.BlockCopy(BitConverter.GetBytes(tiles[x, y].water.id), 0, waterLayerData, pos, 2);
                 if (tiles[x, y].wire.id != 0) Buffer.BlockCopy(BitConverter.GetBytes(tiles[x, y].wire.id), 0, wiringLayerData, pos, 2);
                 pos += 2;
             }
@@ -210,7 +210,16 @@ namespace PixelWorldsServer2.World
             wObj["WiringLayer"] = wiringLayerData;
 
             BSONObject cObj = new BSONObject();
-            cObj["Count"] = 0;
+            cObj["Count"] = collectables.Values.Count;
+
+            for (int i = 0; i < collectables.Values.Count; i++)
+            {
+                var col = collectables.ElementAt(i).Value.GetAsBSON();
+                var kv = collectables.ElementAt(i);
+
+                col["CollectableID"] = kv.Key;
+                cObj[$"C{i}"] = col;
+            }
 
             List<int>[] layerHits = new List<int>[4];
             for (int j = 0; j < layerHits.Length; j++)
@@ -300,8 +309,9 @@ namespace PixelWorldsServer2.World
             }
 
             version = binary[0];
+            OwnerID = BitConverter.ToUInt32(binary, 1);
 
-            int pos = 1;
+            int pos = 5;
             for (int y = 0; y < GetSizeY(); y++)
             {
                 for (int x = 0; x < GetSizeX(); x++)
@@ -313,8 +323,27 @@ namespace PixelWorldsServer2.World
                     tile.water.id = BitConverter.ToInt16(binary, pos + 4);
                     tile.wire.id = BitConverter.ToInt16(binary, pos + 6);
 
+                    if (tile.fg.id == 110)
+                    {
+                        SpawnPointX = (short)x;
+                        SpawnPointY = (short)y;
+                    }
+
                     pos += 8;
                 }
+            }
+
+            int dropCount = BitConverter.ToInt16(binary, pos); pos += 4;
+            for (int i = 0; i < dropCount; i++)
+            {
+                Collectable c = new Collectable();
+                c.item = BitConverter.ToInt16(binary, pos);
+                c.amt = BitConverter.ToInt16(binary, pos + 2);
+                c.posX = BitConverter.ToDouble(binary, pos + 4);
+                c.posY = BitConverter.ToDouble(binary, pos + 12);
+                c.gemType = BitConverter.ToInt16(binary, pos + 20);
+                collectables[++colID] = c;
+                pos += 22;
             }
         }
 

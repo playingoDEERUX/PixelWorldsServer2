@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using PixelWorldsServer2.Database;
 using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.Networking.Server;
 
@@ -83,6 +84,10 @@ namespace PixelWorldsServer2
                 DiscordBot.Init();
                 Util.Log("Discord Bot OK!");
 #endif
+
+                Util.Log("Initializing Shop...");
+                Shop.Init();
+                Util.Log("Shop OK!");
 
                 while (pwServer.GetServer() != null)
                     pwServer.Host();

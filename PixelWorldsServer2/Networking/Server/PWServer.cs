@@ -30,23 +30,31 @@ namespace PixelWorldsServer2.Networking.Server
 
         public void Shutdown()
         {
-            Util.Log("Server is shutting down...");
+            try
+            {
+                Util.Log("Server is shutting down...");
 
-            // will call destructors:
-            long ms = Util.GetMs();
+                // will call destructors:
+                long ms = Util.GetMs();
 
-            //fServer.Stop();
+                //fServer.Stop();
+                sqlManager.Close();
+                worldManager.SaveAll();
+                worldManager.Clear();
 
-            worldManager.SaveAll();
-            worldManager.Clear();
+                foreach (var p in players.Values)
+                    p.Save();
 
-            foreach (var p in players.Values)
-                p.Save();
+                players.Clear();
 
-            players.Clear();
-
-            Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
-            Environment.Exit(0);
+                GC.KeepAlive(this);
+                Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
+                Environment.Exit(0);
+            }
+            catch (Exception ex)
+            {
+                Util.Log(ex.Message);
+            }
         }
 
         public Player[] GetPlayersIngame()
@@ -79,6 +87,20 @@ namespace PixelWorldsServer2.Networking.Server
             return fServer == null ? false : fServer.Start();
         }
 
+        public void Broadcast(ref BSONObject bObj, params Player[] ignored)
+        {
+            foreach (var p in players.Values)
+            {
+                if (ignored.Contains(p))
+                    continue;
+
+                if (p.isInGame)
+                {
+                    p.Send(ref bObj);
+                }
+            }
+        }
+
         public void Tick()
         {
             int playersOn = 0;
@@ -98,7 +120,7 @@ namespace PixelWorldsServer2.Networking.Server
                     client.Flush();
             }
 
-            if (Util.GetSec() > lastDiscordUpdateTime + 14)
+            if (Util.GetSec() > lastDiscordUpdateTime + 29)
             {
                 _ = DiscordBot.UpdateStatus($"Join {playersOn} other players!");
                 lastDiscordUpdateTime = Util.GetSec();

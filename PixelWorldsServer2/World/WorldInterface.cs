@@ -1,5 +1,6 @@
 ﻿using BasicTypes;
 using Kernys.Bson;
+using PixelWorldsServer2.DataManagement;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -2868,11 +2869,23 @@ namespace PixelWorldsServer2.World
 
 		public class Collectable
         {
-			public uint cID;
 			public short item;
 			public short amt;
-			public Vector2i pos;
+			public double posX, posY;
 			public short gemType; // over -1: is a gem as well and has a type.
+
+			public BSONObject GetAsBSON()
+            {
+				var bObj = new BSONObject();
+				bObj["BlockType"] = item;
+				bObj["Amount"] = 999; // HACK
+				bObj["InventoryType"] = ItemDB.GetByID(item).type;
+				bObj["PosX"] = posX;
+				bObj["PosY"] = posY;
+				bObj["IsGem"] = gemType > -1;
+				bObj["GemType"] = gemType < 0 ? 0 : gemType;
+				return bObj;
+			}
         }
 
 		public BSONObject Serialize();

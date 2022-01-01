@@ -11,7 +11,7 @@ namespace PixelWorldsServer2
         IS_SEED = 1 << 9,
         IS_WEARABLE = 1 << 10
     }
-    public struct InventoryItem
+    public class InventoryItem
     {
         public short itemID;
         public short flags;
@@ -29,18 +29,17 @@ namespace PixelWorldsServer2
         private List<InventoryItem> itemList = new List<InventoryItem>();
         public List<InventoryItem> Items => itemList;
 
-        public void Get(short id, short flags, out InventoryItem invItem)
+        public Animation.HotSpots[] AnimHotSpots;
+
+        public InventoryItem Get(short id, short flags = 0)
         {
             foreach (InventoryItem i in itemList)
             {
-                if (i.itemID == id && (i.flags & flags) != 0)
-                {
-                    invItem = i;
-                    break;
-                }
+                if (i.itemID == id && i.flags == flags)
+                    return i;
             }
 
-            invItem = new InventoryItem(0, 0, 0);
+            return null;
         }
 
         public PlayerInventory(byte[] data = null)
@@ -48,7 +47,33 @@ namespace PixelWorldsServer2
             if (data == null)
                 return;
 
+            AnimHotSpots = new Animation.HotSpots[(int)Animation.HotSpots.END_OF_THE_ENUM + 1];
+
             Load(data);
+        }
+
+        // 0: success, -1 any error, higher than 0: left to be handled.
+        public int Add(InventoryItem invItem)
+        {
+            var item = Get(invItem.itemID, invItem.flags);
+
+            if (item == null)
+            {
+                Items.Add(invItem);
+                return 0;
+            }
+
+            item.amount += invItem.amount;
+            Util.Log("Added amt!");
+
+            if (item.amount > 999)
+            {
+                int h = item.amount - 999;
+                item.amount = 999;
+                return h;
+            }
+
+            return 0;
         }
 
         public byte[] Serialize()
@@ -97,22 +122,22 @@ namespace PixelWorldsServer2
         public void InitFirstSetup()
         {
             // bunch of cool items
-            Items.Add(new InventoryItem(605, 0, 9999));
-            Items.Add(new InventoryItem(869, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(870, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(871, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(890, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(1018, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(1019, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(4267, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(4268, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(4269, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(4093, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(2152, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(1412, (short)ItemFlags.IS_WEARABLE, 9999));
-            Items.Add(new InventoryItem(3175, (short)ItemFlags.IS_WEARABLE, 9999));
+            Items.Add(new InventoryItem(605, 0, 999));
+            Items.Add(new InventoryItem(869, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(870, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(871, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(890, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(1018, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(1019, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(4267, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(4268, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(4269, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(4093, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(4266, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(2152, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(1412, (short)ItemFlags.IS_WEARABLE, 999));
+            Items.Add(new InventoryItem(3175, (short)ItemFlags.IS_WEARABLE, 999));
         }
     }
 }

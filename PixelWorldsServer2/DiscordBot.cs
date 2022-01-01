@@ -15,11 +15,6 @@ namespace PixelWorldsServer2
 
         public static async Task UpdateStatus(string status)
         {
-            if (_client.ConnectionState == ConnectionState.Disconnected)
-            {
-                await Login();
-            }
-
             await _client.SetGameAsync(status);
         }
 
@@ -33,6 +28,8 @@ namespace PixelWorldsServer2
         {
             _client.Log += InternalLog;
             hasInit = true;
+
+            _ = Login();
         }
 
         public static async Task Login()

@@ -9,8 +9,36 @@ using PixelWorldsServer2.DataManagement;
 
 namespace PixelWorldsServer2
 {
+    public static class RandomExtensions
+    {
+        public static double NextDouble(
+            this Random random,
+            double minValue,
+            double maxValue)
+        {
+            return random.NextDouble() * (maxValue - minValue) + minValue;
+        }
+    }
+
     public class Util
     {
+        public static bool IsFileReady(string filename)
+        {
+            // If the file can be opened for exclusive access it means that the file
+            // is no longer locked by another process.
+            try
+            {
+                using (FileStream inputStream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.None))
+                    return inputStream.Length > 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static Random rand = new Random();
+
         public static BSONObject CreateChatMessage(string nickname, string userID, string channel, int channelIndex, string message)
         {
             BSONObject bObj = new BSONObject();
@@ -25,13 +53,12 @@ namespace PixelWorldsServer2
 
         public static string RandomString(int length)
         {
-            Random rng = new Random();
             string allowedChars = "ABCDEFGHJKLMNOPQRSTUVWXYZ0123456789";
 
             char[] letters = new char[length];
             for (int i = 0; i < length; i++)
             {
-                letters[i] = allowedChars[rng.Next(allowedChars.Length)];
+                letters[i] = allowedChars[rand.Next(allowedChars.Length)];
             }
             return new string(letters);
         }

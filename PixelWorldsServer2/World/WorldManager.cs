@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using PixelWorldsServer2.Networking.Server;
+using System.Linq;
+using System.Threading;
 
 namespace PixelWorldsServer2.World
 {
@@ -25,10 +27,12 @@ namespace PixelWorldsServer2.World
 
             foreach (var w in worlds)
             {
+                string path = $"maps/{w.WorldName}.map";
                 Console.WriteLine($"Found cached world: {w.WorldName}, saving it...");
                 using (MemoryStream ms = new MemoryStream())
                 {
                     ms.WriteByte(0x1); // version
+                    ms.Write(BitConverter.GetBytes(w.OwnerID));
 
                     for (int y = 0; y < w.GetSizeY(); y++)
                     {
@@ -43,7 +47,19 @@ namespace PixelWorldsServer2.World
                         }
                     }
 
-                    File.WriteAllBytes($"maps/{w.WorldName}.map", Util.LZMAHelper.CompressLZMA(ms.ToArray()));
+                    ms.Write(BitConverter.GetBytes(w.collectables.Values.Count));
+                    for (int i = 0; i < w.collectables.Values.Count; i++)
+                    {
+                        var col = w.collectables.ElementAt(i).Value;
+                        ms.Write(BitConverter.GetBytes(col.item));
+                        ms.Write(BitConverter.GetBytes(col.amt));
+                        ms.Write(BitConverter.GetBytes(col.posX));
+                        ms.Write(BitConverter.GetBytes(col.posY));
+                        ms.Write(BitConverter.GetBytes(col.gemType));
+                    }
+
+                    File.WriteAllBytes(path, Util.LZMAHelper.CompressLZMA(ms.ToArray()));
+                    SpinWait.SpinUntil(() => Util.IsFileReady(path));
                 }
             }
         }
