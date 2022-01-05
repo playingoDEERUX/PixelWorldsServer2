@@ -305,12 +305,101 @@ namespace PixelWorldsServer2.Networking.Server
             resp["pD"] = SimpleBSON.Dump(pd);
             resp["U"] = p.Data.UserID.ToString("X8");
             resp["Wo"] = "PIXELSTATION";
+            resp["EmailVerified"] = true;
+            resp["Email"] = p.IsUnregistered() ? "Register via /register!" : "Registered!";
 
             p.SetClient(client); // override client...
             client.data = p.Data;
             p.isInGame = true;
 
             client.Send(resp);
+        }
+
+        public string HandleCommandRegister(Player p, string[] args)
+        {
+            if (args.Length < 3)
+                return "Usage: /register (NAME) (PASS)";
+
+            string name = args[1], pass = args[2];
+
+            if (SQLiteManager.HasIllegalChar(name) || SQLiteManager.HasIllegalChar(pass))
+                return "Username or password has illegal character! Only letters and numbers.";
+
+            if (pass.Length > 24 || name.Length > 24 || pass.Length < 3 || name.Length < 3)
+                return "Username or Password too long or too short!";
+
+            if (!p.IsUnregistered())
+                return "You are registered already!";
+
+            var sql = pServer.GetSQL();
+
+            using (var read = sql.FetchQuery($"SELECT * FROM players WHERE Name='{name}'"))
+            {
+                if (read.HasRows)
+                    return "An account with this name already exists.";
+            }
+
+            if (sql.Query($"UPDATE players SET Name='{name}', Pass='{pass}' WHERE ID='{p.Data.UserID}'") > 0)
+            {
+                p.Data.Name = name;
+                BSONObject r = new BSONObject("DR");
+
+                p.Send(ref r);
+                return "";
+            }
+
+            return "Couldn't register right now, try again!";
+        }
+
+        public string HandleCommandLogin(Player p, string[] args)
+        {
+            if (args.Length < 3)
+                return "Usage: /login (NAME) (PASS)";
+
+            string name = args[1], pass = args[2];
+
+            if (SQLiteManager.HasIllegalChar(name) || SQLiteManager.HasIllegalChar(pass))
+                return "Username or password has illegal character! Only letters and numbers.";
+
+            if (pass.Length > 24 || name.Length > 24 || pass.Length < 3 || name.Length < 3)
+                return "Username or Password too long or too short!";
+
+            if (!p.IsUnregistered())
+                return "You are logged on already!";
+
+            var sql = pServer.GetSQL();
+            using (var read = sql.FetchQuery($"SELECT * FROM players WHERE Name='{name}' AND Pass='{pass}'"))
+            {
+                uint uID = 0;
+
+                if (!read.HasRows)
+                    return "Account does not exist or password is wrong!";
+
+                if (!read.Read())
+                    return "Account does not exist or password is wrong!";
+
+
+                uID = (uint)(long)read["ID"];
+
+                Console.WriteLine("CognitoID: " + p.Data.CognitoID + " Token: " + p.Data.Token);
+
+                var cmd = sql.Make("UPDATE players SET CognitoID=@CognitoID AND Token=@Token WHERE ID=@ID");
+                cmd.Parameters.AddWithValue("@CognitoID", p.Data.CognitoID);
+                cmd.Parameters.AddWithValue("@Token", p.Data.Token);
+                cmd.Parameters.AddWithValue("@ID", uID);
+
+                if (sql.PreparedQuery(cmd) > 0 && sql.Query($"DELETE FROM players WHERE ID='{p.Data.UserID}'") > 0)
+                {
+                    BSONObject r = new BSONObject("DR");
+                    p.Client.Send(r);
+                    p.Client.Flush();
+
+                    pServer.players.Remove(p.Data.UserID);
+                    return "";
+                }
+            }
+
+            return "Couldn't login right now, try again!";
         }
 
         public void HandleWorldChatMessage(Player p, BSONObject bObj)
@@ -338,7 +427,7 @@ namespace PixelWorldsServer2.Networking.Server
                 switch (tokens[0])
                 {
                     case "/help":
-                        res = "Commands >> /help /item /find";
+                        res = "Commands >> /help /item /find /register /login";
                         break;
 
                     case "/find":
@@ -377,6 +466,14 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
                         }
 
+                    case "/register":
+                        res = HandleCommandRegister(p, tokens);
+                        break;
+
+                    case "/login":
+                        res = HandleCommandLogin(p, tokens);
+                        break;
+
                     case "/item":
                         if (tokCount < 2)
                         {
@@ -411,13 +508,16 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
                 }
 
-                bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
-                    p.world.WorldName,
-                    p.world.WorldName,
-                    1,
-                    res);
+                if (res != "")
+                {
+                    bObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
+                        p.world.WorldName,
+                        p.world.WorldName,
+                        1,
+                        res);
 
-                p.Send(ref bObj);
+                    p.Send(ref bObj);
+                }
             }
             else
             {
@@ -691,8 +791,6 @@ namespace PixelWorldsServer2.Networking.Server
             List<int> spotsList = new List<int>();
             //spotsList.AddRange(Enumerable.Repeat(0, 35));
 
-            Console.WriteLine("UserID: " + p.Data.UserID.ToString("X8"));
-
             pObj["spots"] = spotsList;
             pObj["familiar"] = 0;
             pObj["familiarName"] = "";
@@ -936,14 +1034,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 if ((w.OwnerID > 0 && w.OwnerID != p.Data.UserID))
                 {
-                    BSONObject c = new BSONObject("WCM");
-                    c[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
-                        p.world.WorldName,
-                        p.world.WorldName,
-                        1,
-                        "World is owned by someone else!");
-
-                    p.Send(ref c);
+                    p.SelfChat("World is owned by someone else!");
                     return;
                 }
 
@@ -995,14 +1086,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 if ((p.world.OwnerID > 0 && p.world.OwnerID != p.Data.UserID))
                 {
-                    BSONObject c = new BSONObject("WCM");
-                    c[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
-                        p.world.WorldName,
-                        p.world.WorldName,
-                        1,
-                        "World is owned by someone else!");
-
-                    p.Send(ref c);
+                    p.SelfChat("World is owned by someone else!");
                     return;
                 }
 
@@ -1050,14 +1134,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if ((p.world.OwnerID > 0 && p.world.OwnerID != p.Data.UserID))
             {
-                BSONObject c = new BSONObject("WCM");
-                c[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
-                    p.world.WorldName,
-                    p.world.WorldName,
-                    1,
-                    "World is owned by someone else!");
-
-                p.Send(ref c);
+                p.SelfChat("World is owned by someone else!");
                 return;
             }
 
@@ -1107,14 +1184,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if ((w.OwnerID > 0 && w.OwnerID != p.Data.UserID))
             {
-                BSONObject c = new BSONObject("WCM");
-                c[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
-                    p.world.WorldName,
-                    p.world.WorldName,
-                    1,
-                    "World is owned by someone else!");
-
-                p.Send(ref c);
+                p.SelfChat("World is owned by someone else!");
                 return;
             }
 

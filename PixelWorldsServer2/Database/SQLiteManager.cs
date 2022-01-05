@@ -39,7 +39,7 @@ namespace PixelWorldsServer2.Database
             if (sqliteConn == null)
                 return 0;
 
-            if (sqliteConn.State == System.Data.ConnectionState.Open)
+            if (sqliteConn.State != System.Data.ConnectionState.Open)
                 return 0;
 
             return sqliteConn.LastInsertRowId;
@@ -154,6 +154,6 @@ namespace PixelWorldsServer2.Database
             sqliteConn.Close();
         }
 
-        public static bool HasIllegalChar(string q) => !Regex.IsMatch(q, @"^[a-zA-Z0-9{}:\-.=/+]+$");
+        public static bool HasIllegalChar(string q) => !Regex.IsMatch(q, @"^[a-zA-Z0-9]+$");
     }
 }

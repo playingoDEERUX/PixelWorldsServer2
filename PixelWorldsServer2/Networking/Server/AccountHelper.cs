@@ -19,6 +19,7 @@ namespace PixelWorldsServer2.Networking.Server
             var sql = pServer.GetSQL();
 
             var cmd = sql.Make("SELECT * FROM players WHERE CognitoID=@CognitoID AND Token=@Token");
+
             cmd.Parameters.AddWithValue("@CognitoID", cogID);
             cmd.Parameters.AddWithValue("@Token", cogToken);
 

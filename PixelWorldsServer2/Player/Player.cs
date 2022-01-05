@@ -7,6 +7,7 @@ using System.Numerics;
 using System.Text;
 using FeatherNet;
 using Kernys.Bson;
+using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.Networking.Server;
 
 namespace PixelWorldsServer2
@@ -72,6 +73,8 @@ namespace PixelWorldsServer2
                 invData = (byte[])inven;
 
             pData.Inventory = new PlayerInventory(invData); // todo load inv from sql
+
+            Console.WriteLine(pData.UserID);
         }
 
         public FeatherClient Client { get { return fClient; } }
@@ -115,8 +118,20 @@ namespace PixelWorldsServer2
                     pServer = fClient.link as PWServer;
             }
         }
-        public void Send(ref BSONObject packet) => packets.Add(packet);
 
+        public void SelfChat(string txt)
+        {
+            BSONObject c = new BSONObject("WCM");
+            c[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage("<color=#FF0000>System",
+                world.WorldName,
+                world.WorldName,
+                1,
+                txt);
+
+            Send(ref c);
+        }
+
+        public void Send(ref BSONObject packet) => packets.Add(packet);
         public void RemoveGems(int amt)
         {
             Data.Gems -= amt;
@@ -125,6 +140,12 @@ namespace PixelWorldsServer2
 
             Send(ref bObj);
         }
+
+        public bool IsUnregistered()
+        {
+            return pData.Name.Contains("Subject_");
+        }
+
         public void Save()
         {
             if (pServer == null)

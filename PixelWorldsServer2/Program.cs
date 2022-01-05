@@ -56,6 +56,8 @@ namespace PixelWorldsServer2
                     "ByteCoins int NOT NULL DEFAULT '0'," +
                     "Settings int NOT NULL DEFAULT '0'," +
                     "Inventory varbinary(6144) DEFAULT NULL)");
+
+                pSQL.Query("ALTER TABLE players ADD COLUMN Pass varchar(32) NOT NULL DEFAULT ''");
             }
             else
             {
