@@ -1103,13 +1103,19 @@ namespace PixelWorldsServer2.Networking.Server
                     resp["y"] = y;
                     w.Broadcast(ref resp);
 
-                    tile.fg.id = 0;
-                    tile.fg.damage = 0;
-
                     double pX = x / Math.PI, pY = y / Math.PI;
+
+                    if (tile.fg.id == (short)WorldInterface.BlockType.LockWorld)
+                    {
+                        w.Drop(tile.fg.id, 1, pX, pY);
+                        HandleCollect(p, w.colID);
+                    }
 
                     for (int i = 0; i < 5; i++)
                         w.Drop(0, 1, pX - 0.1 + Util.rand.NextDouble(0, 0.2), pY - 0.1 + Util.rand.NextDouble(0, 0.2), Util.rand.Next(5));
+
+                    tile.fg.id = 0;
+                    tile.fg.damage = 0;
                 }
 
                 tile.fg.lastHit = Util.GetSec();
@@ -1130,6 +1136,13 @@ namespace PixelWorldsServer2.Networking.Server
             short blockType = (short)bObj["BlockType"];
 
             if (blockType == 273)
+                return;
+
+            var invIt = p.Data.Inventory.Get(blockType);
+            if (invIt == null)
+                return;
+
+            if (invIt.amount <= 0)
                 return;
 
             if ((p.world.OwnerID > 0 && p.world.OwnerID != p.Data.UserID))
@@ -1170,6 +1183,8 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
                     }
             }
+
+            p.Data.Inventory.Remove(new InventoryItem(blockType));
         }
 
         public void HandleSetBackgroundBlock(Player p, BSONObject bObj)
@@ -1192,6 +1207,13 @@ namespace PixelWorldsServer2.Networking.Server
             short blockType = (short)bObj["BlockType"];
             Item it = ItemDB.GetByID(blockType);
 
+            var invIt = p.Data.Inventory.Get(blockType);
+            if (invIt == null)
+                return;
+
+            if (invIt.amount <= 0)
+                return;
+
             bObj["U"] = p.Data.UserID.ToString("X8");
 
 
@@ -1201,6 +1223,8 @@ namespace PixelWorldsServer2.Networking.Server
             t.bg.lastHit = 0;
 
             w.Broadcast(ref bObj);
+
+            p.Data.Inventory.Remove(new InventoryItem(blockType));
         }
         public void HandleMovePlayer(Player p, BSONObject bObj)
         {

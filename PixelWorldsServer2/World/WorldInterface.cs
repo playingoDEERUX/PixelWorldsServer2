@@ -2878,7 +2878,7 @@ namespace PixelWorldsServer2.World
             {
 				var bObj = new BSONObject();
 				bObj["BlockType"] = item;
-				bObj["Amount"] = 999; // HACK
+				bObj["Amount"] = amt; // HACK
 				bObj["InventoryType"] = ItemDB.GetByID(item).type;
 				bObj["PosX"] = posX;
 				bObj["PosY"] = posY;

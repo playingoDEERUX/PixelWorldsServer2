@@ -64,7 +64,6 @@ namespace PixelWorldsServer2
             }
 
             item.amount += invItem.amount;
-            Util.Log("Added amt!");
 
             if (item.amount > 999)
             {
@@ -74,6 +73,23 @@ namespace PixelWorldsServer2
             }
 
             return 0;
+        }
+
+        public int Remove(InventoryItem invItem)
+        {
+            var item = Get(invItem.itemID, invItem.flags);
+
+            if (item == null)
+                return -1;
+
+            if (item.amount <= 1)
+            {
+                Items.Remove(item);
+                return 0;
+            }
+
+            item.amount -= invItem.amount;
+            return invItem.amount;
         }
 
         public byte[] Serialize()
