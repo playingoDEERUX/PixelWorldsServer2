@@ -189,7 +189,7 @@ namespace PixelWorldsServer2.Networking.Server
             {
                 p.SendPing();
             }
-        }   
+        }
 
         private void onDisconnect(FeatherClient client, int flags)
         {
@@ -200,37 +200,28 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             var pData = (Player.PlayerData)client.data;
-
-            if (players.ContainsKey(pData.UserID))
+            // depends on whether we were the last instance to disconnect with that userID:
+            // have to this as the player might try to relogon onto the same session.
+            ushort instances = 0;
+            foreach (FeatherClient fClient in fServer.GetClients())
             {
+                if (fClient.data == null)
+                    continue;
 
+                if (((Player.PlayerData)fClient.data).UserID == pData.UserID)
+                    instances++;
+            }
 
-                // depends on whether we were the last instance to disconnect with that userID:
-                // have to this as the player might try to relogon onto the same session.
-                ushort instances = 0;
-                foreach (FeatherClient fClient in fServer.GetClients())
-                {
-                    if (fClient.data == null)
-                        continue;
+            Player p = pData.player;
+            GetMessageHandler().HandleLeaveWorld(p, null);
 
-                    if (((Player.PlayerData)fClient.data).UserID == pData.UserID)
-                        instances++;
-                }
+            p.isInGame = instances > 0;
 
-                Player p = players[pData.UserID];
-                if (p.world != null)
-                {
-                    GetMessageHandler().HandleLeaveWorld(p, null);
-                }
+            if (!p.isInGame)
+            {
+                Console.WriteLine("Player nowhere ingame anymore, unregistering session...");
 
-                p.isInGame = instances > 0;
-
-                if (!p.isInGame)
-                {
-                    Console.WriteLine("Player nowhere ingame anymore, unregistering session...");
-
-                    p.SetClient(null);
-                }
+                p.SetClient(null);
             }
         }
 

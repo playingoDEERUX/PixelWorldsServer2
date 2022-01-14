@@ -291,8 +291,8 @@ namespace PixelWorldsServer2.Networking.Server
             pd[MsgLabels.PlayerData.InventorySlots] = 400;
 
             
-            pd["experienceAmount"] = 180000;
-            pd["xpAmount"] = 180000;
+           // pd["experienceAmount"] = 180000;
+           // pd["xpAmount"] = 180000;
 
             if (p.Data.Inventory.Items.Count == 0)
             {
@@ -637,10 +637,8 @@ namespace PixelWorldsServer2.Networking.Server
             if (p == null)
                 return;
 
-            if (p.world != null)
-            {
-                HandleLeaveWorld(p, null);
-            }
+            
+            HandleLeaveWorld(p, null);
 
             string worldName = bObj["W"];
             var wmgr = pServer.GetWorldManager();
