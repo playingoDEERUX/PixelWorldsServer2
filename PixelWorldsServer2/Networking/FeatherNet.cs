@@ -10,6 +10,7 @@ using System.Threading;
 using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.Networking.Server;
 using System.Threading.Tasks;
+using PixelWorldsServer2;
 
 namespace FeatherNet
 {
@@ -28,7 +29,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 15; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 32; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MAX_PACKET_SIZE = 160000;
@@ -72,6 +73,8 @@ namespace FeatherNet
             {
                 var ns = client.GetStream();
                 ns.EndWrite(i);
+
+                areWeSending = false;
             }
             catch (ArgumentNullException) { }
             catch (IOException) { }
@@ -214,7 +217,6 @@ namespace FeatherNet
                         return; // huh? Treat it to be legal just incase anyway...
 
                     ns.BeginWrite(data, 0, data.Length, OnEndWrite, null);
-                    areWeSending = false;
                 }
             }
             catch
@@ -225,8 +227,7 @@ namespace FeatherNet
 
         public void Send(BSONObject bObj)
         {
-            if (this.isConnected())
-                outgoingPackets.Add(bObj);
+            outgoingPackets.Add(bObj);
         }
 
         public void SendIfDoesNotContain(BSONObject bObj)

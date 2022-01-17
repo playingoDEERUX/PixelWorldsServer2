@@ -7,6 +7,7 @@ using System.Threading;
 using FeatherNet;
 using Kernys.Bson;
 using PixelWorldsServer2.Database;
+using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.World;
 
 namespace PixelWorldsServer2.Networking.Server
@@ -158,7 +159,6 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
 
                         case FeatherEvent.Types.PING_NOW:
-                            onPing(ev.client, ev.flags);
                             break;
 
                         default:
@@ -180,10 +180,13 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             Player p = client.data == null ? null : ((Player.PlayerData)client.data).player;
-
+            
             if (p == null)
+                return;
+
+            if (flags == 0)
             {
-                client.SendIfDoesNotContain(new BSONObject("p"));
+                p.sendPing = true; // unused for now
             }
             else
             {
@@ -213,14 +216,13 @@ namespace PixelWorldsServer2.Networking.Server
             }
 
             Player p = pData.player;
-            GetMessageHandler().HandleLeaveWorld(p, null);
-
             p.isInGame = instances > 0;
 
             if (!p.isInGame)
             {
                 Console.WriteLine("Player nowhere ingame anymore, unregistering session...");
 
+                GetMessageHandler().HandleLeaveWorld(p, null);
                 p.SetClient(null);
             }
         }

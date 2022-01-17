@@ -218,11 +218,12 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
 
                         default:
-                            pServer.onPing(client, 0);
                             break;
 
                     }
                 }
+
+               pServer.onPing(client, 1);
 #if RELEASE
             }
 
@@ -278,10 +279,19 @@ namespace PixelWorldsServer2.Networking.Server
                     if (p.Client != null)
                     {
                         if (p.Client.isConnected())
+                        {
+                            BSONObject r = new BSONObject("DR");
+                            p.Client.Send(r);
+                            p.Client.Flush();
+
                             p.Client.DisconnectLater();
+                        }
                     }
                 }
             }
+
+            p.Data.CognitoID = cogID;
+            p.Data.Token = cogToken;
 
             BSONObject pd = new BSONObject("pD");
             pd[MsgLabels.PlayerData.ByteCoinAmount] = p.Data.Coins;
@@ -381,9 +391,9 @@ namespace PixelWorldsServer2.Networking.Server
 
                 uID = (uint)(long)read["ID"];
 
-                Console.WriteLine("CognitoID: " + p.Data.CognitoID + " Token: " + p.Data.Token);
+                Console.WriteLine("CognitoID: " + p.Data.CognitoID + " Token: " + p.Data.Token + " UID: " + uID + " UserID: " + p.Data.UserID);
 
-                var cmd = sql.Make("UPDATE players SET CognitoID=@CognitoID AND Token=@Token WHERE ID=@ID");
+                var cmd = sql.Make("UPDATE players SET CognitoID=@CognitoID, Token=@Token WHERE ID=@ID");
                 cmd.Parameters.AddWithValue("@CognitoID", p.Data.CognitoID);
                 cmd.Parameters.AddWithValue("@Token", p.Data.Token);
                 cmd.Parameters.AddWithValue("@ID", uID);
@@ -637,7 +647,6 @@ namespace PixelWorldsServer2.Networking.Server
             if (p == null)
                 return;
 
-            
             HandleLeaveWorld(p, null);
 
             string worldName = bObj["W"];
@@ -686,7 +695,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             BSONObject pObj = new BSONObject("AnP");
 
-
+            long kukTime = Util.GetKukouriTime();
             foreach (var player in p.world.Players)
             {
                 if (player.Data.UserID == p.Data.UserID)
@@ -704,7 +713,7 @@ namespace PixelWorldsServer2.Networking.Server
                 pObj["familiar"] = 0;
                 pObj["familiarName"] = "";
                 pObj["familiarLvl"] = 0;
-                pObj["familiarAge"] = Util.GetKukouriTime();
+                pObj["familiarAge"] = kukTime;
                 pObj["isFamiliarMaxLevel"] = false;
                 pObj["UN"] = player.Data.Name;
                 pObj["U"] = player.Data.UserID.ToString("X8");
@@ -723,7 +732,7 @@ namespace PixelWorldsServer2.Networking.Server
                 pObj["inPortal"] = false;
                 pObj["SIc"] = 0;
                 pObj["D"] = 0;
-                pObj["VIPEndTimeAge"] = Util.GetKukouriTime();
+                pObj["VIPEndTimeAge"] = kukTime;
                 pObj["IsVIP"] = false;
 
                 p.Send(ref pObj);
@@ -779,11 +788,12 @@ namespace PixelWorldsServer2.Networking.Server
             if (p.world == null)
                 return;
 
+            long kukTime = Util.GetKukouriTime();
             BSONObject pObj = new BSONObject();
             pObj[MsgLabels.MessageID] = "AnP";
             pObj["x"] = p.Data.PosX;
             pObj["y"] = p.Data.PosY;
-            pObj["t"] = Util.GetKukouriTime();
+            pObj["t"] = kukTime;
             pObj["a"] = p.Data.Anim;
             pObj["d"] = p.Data.Dir;
             List<int> spotsList = new List<int>();
@@ -793,7 +803,7 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["familiar"] = 0;
             pObj["familiarName"] = "";
             pObj["familiarLvl"] = 0;
-            pObj["familiarAge"] = Util.GetKukouriTime();
+            pObj["familiarAge"] = kukTime;
             pObj["isFamiliarMaxLevel"] = false;
             pObj["UN"] = p.Data.Name;
             pObj["U"] = p.Data.UserID.ToString("X8");
@@ -811,7 +821,7 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["faceAnim"] = 0;
             pObj["inPortal"] = false;
             pObj["SIc"] = 0;
-            pObj["VIPEndTimeAge"] = Util.GetKukouriTime();
+            pObj["VIPEndTimeAge"] = kukTime;
             pObj["IsVIP"] = false;
 
             p.world.Broadcast(ref pObj, p);

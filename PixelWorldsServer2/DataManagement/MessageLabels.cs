@@ -1,6 +1,7 @@
 ﻿/* Creation Date: 26.12.2019 */
 /* Author: @playingo */
 
+using Kernys.Bson;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -28,6 +29,8 @@ namespace PixelWorldsServer2.DataManagement
         public const string Time = "T";
         public const string DestroyBlockBlockType = "DBBT";
         public const string StatusIcon = "SIc";
+
+        public static BSONObject pingBson = new BSONObject("p");
 
         public enum JR 
         {

@@ -16,7 +16,7 @@ namespace PixelWorldsServer2
     {
         private PWServer pServer = null;
         public bool isInGame = false; // when the player has logon and is inside.
-
+        public bool sendPing = false;
         public struct PlayerData
         {
             public Player player;
@@ -63,8 +63,6 @@ namespace PixelWorldsServer2
             pData.Coins = (int)reader["ByteCoins"];
             pData.Name = (string)reader["Name"];
             pData.LastIP = (string)reader["IP"];
-            pData.CognitoID = (string)reader["CognitoID"];
-            pData.Token = (string)reader["Token"];
 
             object inven = reader["Inventory"];
             byte[] invData = null;
@@ -90,9 +88,6 @@ namespace PixelWorldsServer2
                     Client.Send(packets[0]);
                     packets.RemoveAt(0);
                 }
-
-                if (Client.areWeSending)
-                    Client.Flush();
             }
         }
 
@@ -104,8 +99,7 @@ namespace PixelWorldsServer2
                     return;
             }
 
-            BSONObject p = new BSONObject("p");
-            Send(ref p);
+            Send(ref MsgLabels.pingBson);
         }
 
         public void SetClient(FeatherClient fClient) 

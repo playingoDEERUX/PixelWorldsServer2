@@ -64,6 +64,7 @@ namespace PixelWorldsServer2
                 Util.Log("Error SQLite database failed! Continuing... (saving of data may not work)");
             }
 
+            
             if (!Directory.Exists("maps"))
                 Directory.CreateDirectory("maps");
 
