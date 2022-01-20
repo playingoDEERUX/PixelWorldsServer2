@@ -1114,6 +1114,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                     if (tile.fg.id == (short)WorldInterface.BlockType.LockWorld)
                     {
+                        w.OwnerID = 0;
                         w.Drop(tile.fg.id, 1, pX, pY);
                         HandleCollect(p, w.colID);
                     }
