@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Timers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -9,11 +10,13 @@ using Kernys.Bson;
 using PixelWorldsServer2.Database;
 using PixelWorldsServer2.DataManagement;
 using PixelWorldsServer2.World;
+using Timer = System.Timers.Timer;
 
 namespace PixelWorldsServer2.Networking.Server
 {
     public class PWServer
     {
+        private Timer tickTimer = new Timer(FeatherDefaults.PING_CLOCK_MS);
         public int Version = 91;
         public int Port; // for quick-accessibility
         private FeatherServer fServer = null;
@@ -47,6 +50,7 @@ namespace PixelWorldsServer2.Networking.Server
                     p.Save();
 
                 players.Clear();
+                tickTimer.Stop();
 
                 GC.KeepAlive(this);
                 Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
@@ -85,7 +89,16 @@ namespace PixelWorldsServer2.Networking.Server
 
         public bool Start()
         {
-            return fServer == null ? false : fServer.Start();
+            bool started = fServer == null ? false : fServer.Start();
+
+            if (started)
+            {
+                tickTimer.AutoReset = true;
+                tickTimer.Elapsed += Tick;
+                tickTimer.Start();
+            }
+
+            return started;
         }
 
         public void Broadcast(ref BSONObject bObj, params Player[] ignored)
@@ -102,29 +115,35 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
-        public void Tick()
+        public void Tick(object obj, ElapsedEventArgs e)
         {
-            int playersOn = 0;
-            foreach (var p in players.Values)
+            lock (locker)
             {
-                if (p.isInGame)
+                int playersOn = 0;
+                foreach (var p in players.Values)
                 {
-                    playersOn++;
-                    p.Tick();
+                    if (p.isInGame)
+                    {
+                        playersOn++;
+                        p.Tick();
+                    }
                 }
-            }
 
-            var clients = fServer.GetClients();
-            foreach (var client in clients)
-            {
-                if (client.areWeSending)
-                    client.Flush();
-            }
+                var clients = fServer.GetClients();
+                foreach (var client in clients)
+                {
+                    if (client.areWeSending)
+                    {
+                        onPing(client, 1);
+                        client.Flush();
+                    }
+                }
 
-            if (Util.GetSec() > lastDiscordUpdateTime + 29)
-            {
-                _ = DiscordBot.UpdateStatus($"Join {playersOn} other players!");
-                lastDiscordUpdateTime = Util.GetSec();
+                if (Util.GetSec() > lastDiscordUpdateTime + 29)
+                {
+                    _ = DiscordBot.UpdateStatus($"Join {playersOn} other players!");
+                    lastDiscordUpdateTime = Util.GetSec();
+                }
             }
         }
 
@@ -165,8 +184,6 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
                     }
                 }
-
-                Tick();
             }
 
             if (sleep)

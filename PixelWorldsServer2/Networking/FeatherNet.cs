@@ -29,7 +29,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 32; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 25; // essentially acts like a tickrate.
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MAX_PACKET_SIZE = 160000;

@@ -218,12 +218,11 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
 
                         default:
+                            pServer.onPing(client, 1);
                             break;
 
                     }
                 }
-
-               pServer.onPing(client, 1);
 #if RELEASE
             }
 
@@ -927,7 +926,7 @@ namespace PixelWorldsServer2.Networking.Server
             if (c.gemType < 0)
             {
                 p.Data.Inventory.Add(new InventoryItem((short)c.item,
-                ItemDB.IsWearable(c.item) ? (short)ItemFlags.IS_WEARABLE : (short)0, 999));
+                ItemDB.IsWearable(c.item) ? (short)ItemFlags.IS_WEARABLE : (short)0, c.amt));
             }
             else
             {
