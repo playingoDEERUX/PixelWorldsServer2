@@ -138,6 +138,7 @@ namespace FeatherNet
             }
             catch (InvalidOperationException) { }
             catch (ArgumentOutOfRangeException) { }
+            catch (ArgumentException) { }
             catch (IOException) { }
         }
         public void StartReading(PWServer server)
