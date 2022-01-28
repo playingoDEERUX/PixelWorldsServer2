@@ -1,4 +1,6 @@
-﻿using System;
+﻿/* The FeatherNet TCP wrapper is made by github.com/playingoDEERUX (a.k.a RynioBrothers#7761 on Discord). */
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Net.Sockets;
@@ -29,7 +31,9 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 25; // essentially acts like a tickrate.
+        public const int PING_CLOCK_MS = 25; // Tickrate. Setting this too low will cause high cpu, 25ms (40 hz) is good.
+        // ^^ use 15 ms (66 hz) if you have a good server.
+
         public const int PING_MULTIPLIER = 1;
         public const int BUFFER_SIZE = 8192;
         public const int MAX_PACKET_SIZE = 160000;

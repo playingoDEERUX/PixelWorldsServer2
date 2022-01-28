@@ -612,7 +612,7 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
             }
 
-            Console.WriteLine($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{pServer.GetPlayersIngame().Length} players online!]...");
+            Console.WriteLine($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{pServer.GetPlayersIngameCount()} players online!]...");
 
             BSONObject resp = new BSONObject(MsgLabels.Ident.TryToJoinWorld);
             resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;

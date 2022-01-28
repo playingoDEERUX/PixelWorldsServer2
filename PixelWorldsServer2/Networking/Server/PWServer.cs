@@ -62,7 +62,20 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
-        public Player[] GetPlayersIngame()
+        public int GetPlayersIngameCount()
+        {
+            int c = 0;
+
+            foreach (Player player in players.Values)
+            {
+                if (player.isInGame)
+                    c++;
+            }
+
+            return c; // should be a more optimized version of returning the entire list.
+        }
+
+        public List<Player> GetPlayersIngame()
         {
             List<Player> ingame = new List<Player>();
 
@@ -72,7 +85,7 @@ namespace PixelWorldsServer2.Networking.Server
                     ingame.Add(player);
             }
 
-            return ingame.ToArray();
+            return ingame;
         }
 
         [Obsolete]

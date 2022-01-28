@@ -80,7 +80,7 @@ namespace PixelWorldsServer2.World
             BSONObject cObj = new BSONObject("nCo");
             cObj["CollectableID"] = cId;
             cObj["BlockType"] = id;
-            cObj["Amount"] = amt; // HACK
+            cObj["Amount"] = amt;
             cObj["InventoryType"] = gem < 0 ? ItemDB.GetByID(id).type : 0;
 
             Collectable c = new Collectable();

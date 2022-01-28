@@ -137,7 +137,7 @@ namespace PixelWorldsServer2
 
         public bool IsUnregistered()
         {
-            return pData.Name.Contains("Subject_");
+            return pData.Name.StartsWith("Subject_");
         }
 
         public void Save()
