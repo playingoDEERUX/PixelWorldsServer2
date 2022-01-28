@@ -129,8 +129,6 @@ namespace PixelWorldsServer2.World
         {
             // first, add new entry to sql:
             // todo filter the name from bad shit b4 release...
-
-            var sql = pServer.GetSQL();
             SpawnPointX = (short)(1 + new Random().Next(79));
             WorldName = name;
 
