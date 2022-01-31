@@ -565,7 +565,8 @@ namespace PixelWorldsServer2.Networking.Server
             if (p == null)
                 return;
 
-            var id = bObj["IPId"];
+            string id = bObj["IPId"];
+            Console.WriteLine(id);
             bObj["S"] = "PS";
 
             if (Shop.offers.ContainsKey(id))
@@ -577,7 +578,7 @@ namespace PixelWorldsServer2.Networking.Server
                     if (p.Data.Gems >= s.price)
                     {
                         bObj["IPRs"] = s.items;
-
+                     
                         foreach (var item in s.items)
                         {
                             p.Data.Inventory.Add(new InventoryItem((short)item));
@@ -831,7 +832,7 @@ namespace PixelWorldsServer2.Networking.Server
                     p.world.WorldName,
                     p.world.WorldName,
                     1,
-                    "PWPS by RynioBrothers, discord.gg/bxF65jx7Vs");
+                    "PWPS by Bytez, discord.gg/bxF65jx7Vs");
 
             p.Send(ref cObj);
         }
@@ -1119,7 +1120,7 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleCollect(p, w.colID);
                     }
 
-                    for (int i = 0; i < 5; i++)
+                    for (int i = 0; i < 420; i++)
                         w.Drop(0, 1, pX - 0.1 + Util.rand.NextDouble(0, 0.2), pY - 0.1 + Util.rand.NextDouble(0, 0.2), Util.rand.Next(5));
 
                     tile.fg.id = 0;
