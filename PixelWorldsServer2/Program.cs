@@ -61,6 +61,7 @@ namespace PixelWorldsServer2
 
                 pSQL.Query("ALTER TABLE players ADD COLUMN Pass varchar(32) NOT NULL DEFAULT ''");
                 pSQL.Query("ALTER TABLE players ADD COLUMN OPStatus int NOT NULL DEFAULT '0'");
+                pSQL.Query("ALTER TABLE players ADD COLUMN BSON MEDIUMBLOB DEFAULT NULL");
             }
             else
             {

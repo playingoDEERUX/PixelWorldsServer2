@@ -446,14 +446,13 @@ namespace PixelWorldsServer2.Networking.Server
                                 break;
                             }
 
-                            string item_query = tokens[1];
+                            string item_query = "";
 
                             for (int i = 1; i < tokens.Length; i++)
                             {
                                 item_query += tokens[i];
 
-                                if (i < (tokens.Length - 1))
-                                    item_query += " ";
+                                if (i < tokens.Length - 1) item_query += " ";
                             }
 
                             if (item_query.Length < 2)
@@ -709,6 +708,17 @@ namespace PixelWorldsServer2.Networking.Server
                 if (player.Data.UserID == p.Data.UserID)
                     continue;
 
+                string prefix = "";
+                switch (player.pSettings.GetHighestRank())
+                {
+                    case Ranks.ADMIN:
+                        prefix = "<color=#FF0000>";
+                        break;
+
+                    default:
+                        break;
+                }
+
                 BSONObject pObj = new BSONObject("AnP");
                 pObj["x"] = player.Data.PosX;
                 pObj["y"] = player.Data.PosY;
@@ -724,7 +734,7 @@ namespace PixelWorldsServer2.Networking.Server
                 pObj["familiarLvl"] = 0;
                 pObj["familiarAge"] = kukTime;
                 pObj["isFamiliarMaxLevel"] = false;
-                pObj["UN"] = player.Data.Name;
+                pObj["UN"] = prefix + player.Data.Name;
                 pObj["U"] = player.Data.UserID.ToString("X8");
                 pObj["Age"] = 69;
                 pObj["LvL"] = 99;
@@ -809,13 +819,24 @@ namespace PixelWorldsServer2.Networking.Server
             List<int> spotsList = new List<int>();
             //spotsList.AddRange(Enumerable.Repeat(0, 35));
 
+            string prefix = "";
+            switch (p.pSettings.GetHighestRank())
+            {
+                case Ranks.ADMIN:
+                    prefix = "<color=#FF0000>";
+                    break;
+
+                default:
+                    break;
+            }
+
             pObj["spots"] = spotsList;
             pObj["familiar"] = 0;
             pObj["familiarName"] = "";
             pObj["familiarLvl"] = 0;
             pObj["familiarAge"] = kukTime;
             pObj["isFamiliarMaxLevel"] = false;
-            pObj["UN"] = p.Data.Name;
+            pObj["UN"] = prefix + p.Data.Name;
             pObj["U"] = p.Data.UserID.ToString("X8");
             pObj["Age"] = 69;
             pObj["LvL"] = 99;

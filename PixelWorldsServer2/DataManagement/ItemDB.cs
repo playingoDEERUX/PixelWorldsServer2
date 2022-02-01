@@ -99,7 +99,7 @@ namespace PixelWorldsServer2.DataManagement
             string s = name.ToLower();
             foreach (var item in items)
             {
-                if (item.name.ToLower().StartsWith(s))
+                if (item.name.ToLower().Contains(s))
                     foundItems.Add(item);
             }
 
