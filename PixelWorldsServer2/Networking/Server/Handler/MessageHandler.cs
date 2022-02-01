@@ -448,6 +448,14 @@ namespace PixelWorldsServer2.Networking.Server
 
                             string item_query = tokens[1];
 
+                            for (int i = 1; i < tokens.Length; i++)
+                            {
+                                item_query += tokens[i];
+
+                                if (i < (tokens.Length - 1))
+                                    item_query += " ";
+                            }
+
                             if (item_query.Length < 2)
                             {
                                 res = "Please enter an item name with more than 2 characters!";
@@ -723,6 +731,7 @@ namespace PixelWorldsServer2.Networking.Server
                 pObj["xpLvL"] = 99;
                 pObj["pAS"] = 0;
                 pObj["PlayerAdminEditMode"] = false;
+                pObj[MsgLabels.PlayerData.PlayerOPStatus] = (int)player.pSettings.GetHighestRank();
                 pObj["Ctry"] = 999;
                 pObj["GAmt"] = player.Data.Gems;
                 pObj["ACo"] = 0;
@@ -823,6 +832,7 @@ namespace PixelWorldsServer2.Networking.Server
             pObj["inPortal"] = false;
             pObj["SIc"] = 0;
             pObj["VIPEndTimeAge"] = kukTime;
+            pObj[MsgLabels.PlayerData.PlayerOPStatus] = (int)p.pSettings.GetHighestRank();
             pObj["IsVIP"] = false;
 
             p.world.Broadcast(ref pObj, p);
