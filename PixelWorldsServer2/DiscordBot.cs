@@ -20,12 +20,18 @@ namespace PixelWorldsServer2
 
         private static Task InternalLog(LogMessage msg)
         {
-            System.Console.WriteLine(msg.ToString());
+            return Task.CompletedTask;
+        }
+
+        private static Task Connected()
+        {
+            Util.Log("Discord Bot connected successfully!");
             return Task.CompletedTask;
         }
 
         public static void Init()
         {
+            _client.Connected += Connected;
             _client.Log += InternalLog;
             hasInit = true;
 

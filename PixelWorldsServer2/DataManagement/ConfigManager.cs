@@ -50,24 +50,24 @@ namespace PixelWorldsServer2.DataManagement
                 {
                     case "port":
                         if (!ushort.TryParse(value, out config.serverPort))
-                            Console.WriteLine($"Invalid conversion from config value '{value}' by key '{key}'.");
+                            Util.Log($"Invalid conversion from config value '{value}' by key '{key}'.");
 
                         break;
 
                     case "gameversion":
                         if (!ushort.TryParse(value, out config.gameVersion))
-                            Console.WriteLine($"Invalid conversion from config value '{value}' by key '{key}'.");
+                            Util.Log($"Invalid conversion from config value '{value}' by key '{key}'.");
 
                         break;
 
                     case "maxplayers":
                         if (!short.TryParse(value, out config.playerLimit))
-                            Console.WriteLine($"Invalid conversion from config value '{value}' by key '{key}'.");
+                            Util.Log($"Invalid conversion from config value '{value}' by key '{key}'.");
 
                         break;
 
                     default:
-                        Console.WriteLine("Unknown config key: " + key);
+                        Util.Log("Unknown config key: " + key);
                         break;
                 }
             }

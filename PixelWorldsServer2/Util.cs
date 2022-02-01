@@ -6,6 +6,8 @@ using Kernys.Bson;
 using System.Linq;
 using SevenZip;
 using PixelWorldsServer2.DataManagement;
+using System.Threading;
+using System.Collections.Concurrent;
 
 namespace PixelWorldsServer2
 {
@@ -22,6 +24,80 @@ namespace PixelWorldsServer2
 
     public class Util
     {
+        public static Networking.Server.PWServer staticServer = null;
+        private static Thread loggerThread = new Thread(Logger);
+        private static ConcurrentQueue<string> logQueue = new ConcurrentQueue<string>();
+
+        private static void HandleConsoleInput(string input)
+        {
+            string[] vs = input.Split(' ');
+
+            staticServer.ConsoleCommand(vs);
+        }
+
+        private static bool runningLogger = true;
+
+        private static void CheckInput()
+        {
+            while (Console.KeyAvailable)
+            {
+                string input = Console.ReadLine();
+                Util.Log("Admin Console > '" + input + "'");
+                HandleConsoleInput(input);
+            }
+        }
+        private static void Logger()
+        {
+            bool hadOutput = false;
+            string outLog = "";
+
+            while (runningLogger)
+            {
+                CheckInput();
+
+                string toLog = "";
+
+                while (logQueue.TryDequeue(out outLog))
+                    toLog += "\n" + outLog;
+
+                if (toLog.Length > 0)
+                {
+                    Console.SetCursorPosition(0, Console.CursorTop);
+                    Console.Write(new String(' ', Console.BufferWidth));
+
+                    Console.WriteLine(toLog);
+                    File.AppendAllText("log.txt", toLog);
+                    Console.Out.Flush();
+
+                    hadOutput = true;
+                }
+                else if (toLog.Length == 0 && hadOutput)
+                {
+                    hadOutput = false;
+
+                    Console.SetCursorPosition(0, Console.CursorTop);
+                    Console.Write(new String(' ', Console.BufferWidth));
+
+                    Console.Write("Admin Console > ");
+                    Console.Out.Flush();
+                }
+              
+                Thread.Sleep(50);
+            }
+        }
+
+        public static void StartLogger(Networking.Server.PWServer pServer)
+        {
+            staticServer = pServer;
+            loggerThread.Start();
+        }
+
+        public static void StopLogger()
+        {
+            runningLogger = false;
+            loggerThread.Join();
+        }
+       
         public static bool IsFileReady(string filename)
         {
             // If the file can be opened for exclusive access it means that the file
@@ -63,14 +139,9 @@ namespace PixelWorldsServer2
             return new string(letters);
         }
 
-        public static void Log(string text, bool save = false)
+        public static void Log(string text)
         {
-            string log = "[SERVER at " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "]: " + text;
-
-            Console.WriteLine(log);
-
-            if (save)
-                File.AppendAllText("log.txt", log + Environment.NewLine);
+            logQueue.Enqueue("[SERVER at " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "]: " + text);
         }
 
         public static long GetKukouriTime()
@@ -221,7 +292,7 @@ namespace PixelWorldsServer2
                 }
             }
             data += "====================\n";
-            Console.WriteLine(data);
+            Util.Log(data);
 
             if (appendToFile)
                 File.AppendAllText("bsonlogs.txt", data);

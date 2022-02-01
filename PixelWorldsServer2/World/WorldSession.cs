@@ -113,14 +113,14 @@ namespace PixelWorldsServer2.World
             if (!File.Exists(path))
             {
 #if DEBUG
-                Console.WriteLine("Generating new world with name: " + worldName);
+                Util.Log("Generating new world with name: " + worldName);
 #endif
                 // generate world
                 Generate(worldName);
                 return;
             }
 
-            Console.WriteLine("Attempting to load world from DB...");
+            Util.Log("Attempting to load world from DB...");
             Deserialize(Util.LZMAHelper.DecompressLZMA(File.ReadAllBytes(path)));
             this.WorldName = worldName;
         }
@@ -137,7 +137,7 @@ namespace PixelWorldsServer2.World
 
         public void SetupTerrain()
         {
-            Console.WriteLine("Setting up world terrain...");
+            Util.Log("Setting up world terrain...");
             // empty world for now
             tiles = new WorldTile[80, 60];
 
@@ -182,7 +182,7 @@ namespace PixelWorldsServer2.World
             int width = GetSizeX();
             int height = GetSizeY();
 
-            Console.WriteLine($"Serializing world '{WorldName}' with width: {width} and height: {height}.");
+            Util.Log($"Serializing world '{WorldName}' with width: {width} and height: {height}.");
 
             int pos = 0;
             for (int i = 0; i < tiles.Length; ++i)

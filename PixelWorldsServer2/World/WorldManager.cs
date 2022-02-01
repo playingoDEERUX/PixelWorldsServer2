@@ -28,7 +28,7 @@ namespace PixelWorldsServer2.World
             foreach (var w in worlds)
             {
                 string path = $"maps/{w.WorldName}.map";
-                Console.WriteLine($"Found cached world: {w.WorldName}, saving it...");
+                Util.Log($"Found cached world: {w.WorldName}, saving it...");
                 using (MemoryStream ms = new MemoryStream())
                 {
                     ms.WriteByte(0x1); // version

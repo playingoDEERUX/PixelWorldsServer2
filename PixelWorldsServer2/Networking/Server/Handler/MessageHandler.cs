@@ -30,7 +30,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if (!bObj.ContainsKey("mc"))
             {
-                Console.WriteLine("Invalid bson packet (no mc!)");
+                Util.Log("Invalid bson packet (no mc!)");
                 client.DisconnectLater();
                 return; // Invalid Pixel Worlds BSON packet!
             }
@@ -274,7 +274,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 if (p.isInGame)
                 {
-                    Console.WriteLine("Account is online already, disconnecting current client...");
+                    Util.Log("Account is online already, disconnecting current client...");
                     if (p.Client != null)
                     {
                         if (p.Client.isConnected())
@@ -296,9 +296,8 @@ namespace PixelWorldsServer2.Networking.Server
             pd[MsgLabels.PlayerData.ByteCoinAmount] = p.Data.Coins;
             pd[MsgLabels.PlayerData.GemsAmount] = p.Data.Gems;
             pd[MsgLabels.PlayerData.Username] = p.Data.Name.ToUpper();
-            pd[MsgLabels.PlayerData.PlayerOPStatus] = 2;
+            pd[MsgLabels.PlayerData.PlayerOPStatus] = (int)p.pSettings.GetHighestRank();
             pd[MsgLabels.PlayerData.InventorySlots] = 400;
-
             
            // pd["experienceAmount"] = 180000;
            // pd["xpAmount"] = 180000;
@@ -390,7 +389,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 uID = (uint)(long)read["ID"];
 
-                Console.WriteLine("CognitoID: " + p.Data.CognitoID + " Token: " + p.Data.Token + " UID: " + uID + " UserID: " + p.Data.UserID);
+                Util.Log("CognitoID: " + p.Data.CognitoID + " Token: " + p.Data.Token + " UID: " + uID + " UserID: " + p.Data.UserID);
 
                 var cmd = sql.Make("UPDATE players SET CognitoID=@CognitoID, Token=@Token WHERE ID=@ID");
                 cmd.Parameters.AddWithValue("@CognitoID", p.Data.CognitoID);
@@ -566,7 +565,7 @@ namespace PixelWorldsServer2.Networking.Server
                 return;
 
             string id = bObj["IPId"];
-            Console.WriteLine(id);
+            Util.Log(id);
             bObj["S"] = "PS";
 
             if (Shop.offers.ContainsKey(id))
@@ -609,11 +608,11 @@ namespace PixelWorldsServer2.Networking.Server
         {
             if (p == null)
             {
-                Console.WriteLine("p is null");
+                Util.Log("p is null");
                 return;
             }
 
-            Console.WriteLine($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{pServer.GetPlayersIngameCount()} players online!]...");
+            Util.Log($"Player with userID: { p.Data.UserID.ToString() } is trying to join a world [{pServer.GetPlayersIngameCount()} players online!]...");
 
             BSONObject resp = new BSONObject(MsgLabels.Ident.TryToJoinWorld);
             resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.UNAVAILABLE;
@@ -630,7 +629,7 @@ namespace PixelWorldsServer2.Networking.Server
             else if (world != null)
             {
 #if DEBUG
-                Console.WriteLine("World not null, JoinResult SUCCESS, joining world...");
+                Util.Log("World not null, JoinResult SUCCESS, joining world...");
 #endif
                 resp[MsgLabels.JoinResult] = (int)MsgLabels.JR.SUCCESS;
             }
@@ -682,7 +681,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             p.world.RemovePlayer(p);
 
-            Console.WriteLine($"Player with UserID {p.Data.UserID} left the world!");
+            Util.Log($"Player with UserID {p.Data.UserID} left the world!");
         }
 
         public void HandleRequestOtherPlayers(Player p, BSONObject bObj)
@@ -693,7 +692,8 @@ namespace PixelWorldsServer2.Networking.Server
             if (p.world == null)
                 return;
 
-            BSONObject pObj = new BSONObject("AnP");
+            //p.Send(ref bObj);
+           
 
             long kukTime = Util.GetKukouriTime();
             foreach (var player in p.world.Players)
@@ -701,9 +701,10 @@ namespace PixelWorldsServer2.Networking.Server
                 if (player.Data.UserID == p.Data.UserID)
                     continue;
 
+                BSONObject pObj = new BSONObject("AnP");
                 pObj["x"] = player.Data.PosX;
                 pObj["y"] = player.Data.PosY;
-                pObj["t"] = Util.GetKukouriTime();
+                pObj["t"] = kukTime;
                 pObj["a"] = player.Data.Anim;
                 pObj["d"] = player.Data.Dir;
                 List<int> spotsList = new List<int>();
@@ -1120,7 +1121,7 @@ namespace PixelWorldsServer2.Networking.Server
                         HandleCollect(p, w.colID);
                     }
 
-                    for (int i = 0; i < 420; i++)
+                    for (int i = 0; i < 5; i++)
                         w.Drop(0, 1, pX - 0.1 + Util.rand.NextDouble(0, 0.2), pY - 0.1 + Util.rand.NextDouble(0, 0.2), Util.rand.Next(5));
 
                     tile.fg.id = 0;

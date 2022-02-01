@@ -40,6 +40,7 @@ namespace PixelWorldsServer2
             }
 
             PWServer pwServer = new PWServer(port);
+            Util.StartLogger(pwServer);
 
             Util.Log("Checking SQLite db...");
 
@@ -55,16 +56,17 @@ namespace PixelWorldsServer2
                     "Gems int NOT NULL DEFAULT '0'," +
                     "ByteCoins int NOT NULL DEFAULT '0'," +
                     "Settings int NOT NULL DEFAULT '0'," +
-                    "Inventory varbinary(6144) DEFAULT NULL)");
+                    "Inventory varbinary(6144) DEFAULT NULL," +
+                    "BSON MEDIUMBLOB DEFAULT NULL)");
 
                 pSQL.Query("ALTER TABLE players ADD COLUMN Pass varchar(32) NOT NULL DEFAULT ''");
+                pSQL.Query("ALTER TABLE players ADD COLUMN OPStatus int NOT NULL DEFAULT '0'");
             }
             else
             {
                 Util.Log("Error SQLite database failed! Continuing... (saving of data may not work)");
             }
 
-            
             if (!Directory.Exists("maps"))
                 Directory.CreateDirectory("maps");
 
@@ -92,8 +94,10 @@ namespace PixelWorldsServer2
                 Shop.Init();
                 Util.Log("Shop OK!");
 
-                while (pwServer.GetServer() != null)
+                while (pwServer.GetServer() != null && !pwServer.wantsShutdown)
                     pwServer.Host();
+
+                Util.StopLogger();
             }
             else
             {

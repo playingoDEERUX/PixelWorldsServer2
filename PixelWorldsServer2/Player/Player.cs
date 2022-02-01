@@ -15,6 +15,7 @@ namespace PixelWorldsServer2
     public class Player
     {
         private PWServer pServer = null;
+        public PlayerSettings pSettings { get; set; }
         public bool isInGame = false; // when the player has logon and is inside.
         public bool sendPing = false;
         public struct PlayerData
@@ -29,18 +30,27 @@ namespace PixelWorldsServer2
             public PlayerInventory Inventory;
             public double PosX, PosY;
             public int Anim, Dir;
+            public BSONObject BSON;
         }
 
         private PlayerData pData; // basically acts like a save, this is not the data that is assigned to the FeatherNet session itself.
         private FeatherClient fClient = null;
         private List<BSONObject> packets = new List<BSONObject>();
         public World.WorldSession world = null;
+        public string GetWorldName()
+        {
+            if (world == null)
+                return "[WORLD MENU]";
+
+            return world == null ? "<World Menu>" : world.WorldName;
+        }
         public Player(FeatherClient fClient = null)
         {
             if (fClient != null)
             {
                 this.fClient = fClient;
                 pServer = fClient.link as PWServer;
+                this.pSettings = new PlayerSettings();
 
                 pData.player = this;
                 pData.UserID = 0;
@@ -51,6 +61,7 @@ namespace PixelWorldsServer2
                 pData.Name = "";
                 pData.LastIP = "0.0.0.0";
                 pData.Inventory = new PlayerInventory();
+                pData.BSON = new BSONObject();
                 
                 fClient.data = pData; // interlink
             }
@@ -58,11 +69,13 @@ namespace PixelWorldsServer2
         public Player(SQLiteDataReader reader)
         {
             pData.player = this;
+            this.pSettings = new PlayerSettings((int)reader["Settings"]);
             pData.UserID = (uint)(long)reader["ID"];
             pData.Gems = (int)reader["Gems"];
             pData.Coins = (int)reader["ByteCoins"];
             pData.Name = (string)reader["Name"];
             pData.LastIP = (string)reader["IP"];
+           
 
             object inven = reader["Inventory"];
             byte[] invData = null;
@@ -70,9 +83,23 @@ namespace PixelWorldsServer2
             if (!Convert.IsDBNull(inven))
                 invData = (byte[])inven;
 
-            pData.Inventory = new PlayerInventory(invData); // todo load inv from sql
+            object bsonObj = reader["Inventory"];
+            byte[] bsonData = null;
 
-            Console.WriteLine(pData.UserID);
+            if (!Convert.IsDBNull(bsonObj))
+                bsonData = (byte[])bsonObj;
+
+            try
+            {
+                pData.BSON = SimpleBSON.Load(bsonData);
+            }
+            catch
+            {
+                pData.BSON = new BSONObject();
+                //Util.Log("Failed to read BSON extended data for User " + pData.UserID.ToString("X8") + "!");
+            }
+
+            pData.Inventory = new PlayerInventory(invData); // todo load inv from sql
         }
 
         public FeatherClient Client { get { return fClient; } }
@@ -148,10 +175,20 @@ namespace PixelWorldsServer2
             Util.Log("Saving player...");
 
             var sql = pServer.GetSQL();
-            var cmd = sql.Make("UPDATE players SET Gems=@Gems, ByteCoins=@ByteCoins, IP=@IP, Inventory=@Inventory WHERE ID=@ID");
+            var cmd = sql.Make("UPDATE players SET " +
+                "Gems=@Gems, " +
+                "ByteCoins=@ByteCoins, " +
+                "IP=@IP, " +
+                "Inventory=@Inventory, " +
+                "Settings=@Settings, " +
+                "BSON=@BSON " +
+                "WHERE ID=@ID");
+
             cmd.Parameters.AddWithValue("@Gems", Data.Gems);
             cmd.Parameters.AddWithValue("@ByteCoins", Data.Coins);
             cmd.Parameters.AddWithValue("@IP", Data.LastIP);
+            cmd.Parameters.AddWithValue("@Settings", pSettings.GetSettings());
+            cmd.Parameters.AddWithValue("@BSON", SimpleBSON.Dump(Data.BSON));
 
             byte[] invData = Data.Inventory.Serialize();
             cmd.Parameters.Add("@Inventory", DbType.Binary);

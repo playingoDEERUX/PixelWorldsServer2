@@ -17,6 +17,7 @@ namespace PixelWorldsServer2.Networking.Server
     public class PWServer
     {
         private Timer tickTimer = new Timer(FeatherDefaults.PING_CLOCK_MS);
+        public bool wantsShutdown = false;
         public int Version = 91;
         public int Port; // for quick-accessibility
         private FeatherServer fServer = null;
@@ -31,6 +32,128 @@ namespace PixelWorldsServer2.Networking.Server
         public MessageHandler GetMessageHandler() => msgHandler;
         public WorldManager GetWorldManager() => worldManager;
         public AccountHelper GetAccountHelper() => accountHelper;
+
+       
+        private void HandleConsoleSetRank(uint userID, Ranks rankType)
+        {
+            // duration is in secs here...
+
+            if (!players.ContainsKey(userID))
+            {
+                Util.Log("This user isn't online. Use 'getinfo <name>' if you want to grab the userID of a player's name. (Aborted)");
+                return;
+            }
+
+            Player p = players[userID];
+            if (!p.isInGame || p.Client == null)
+            {
+                Util.Log("This user isn't online. Use 'getinfo <name>' if you want to grab the userID of a player's name. (Aborted)");
+                return;
+            }
+
+            switch (rankType)
+            {
+                case Ranks.ADMIN:
+                    p.pSettings.Set(PlayerSettings.Bit.SET_ADMIN);
+                    break;
+
+                case Ranks.INFLUENCER:
+                    p.pSettings.Set(PlayerSettings.Bit.SET_INFLUENCER);
+                    break;
+
+                case Ranks.MODERATOR:
+                    p.pSettings.Set(PlayerSettings.Bit.SET_MOD);
+                    break;
+
+                default:
+                    break;
+            }
+
+            Util.Log("User rank has been set! Will request this user to reconnect...");
+            
+            BSONObject r = new BSONObject("DR");
+            p.Send(ref r);
+        }
+
+        private void HandleConsoleGetInfo(string username)
+        {
+            Util.Log("Obtaining player info from username '" + username + "'...");
+
+            var timeMs = Util.GetMs();
+            var reader = sqlManager.FetchQuery("SELECT * FROM players WHERE Name='" + username + "'");
+
+            if (reader.Read())
+            {
+                Player player = new Player(reader);
+
+                uint userID = player.Data.UserID;
+                if (players.ContainsKey(userID))
+                {
+                    player = players[userID];
+                }
+
+                Util.Log($"Result:  UserID: {userID}, Gems: {player.Data.Gems}, IP: {player.Data.LastIP}, Online: " + (player.isInGame ? $"yes (in '{player.GetWorldName()}')" : "no"));
+            }
+            else
+            {
+                Util.Log("No record(s) found.");
+            }
+
+            Util.Log($"Search took {Util.GetMs() - timeMs} milliseconds to perform.");
+        }
+
+        public void ConsoleCommand(string[] cmd)
+        {
+            // Process the console input command:
+
+            lock (locker)
+            {
+                try
+                {
+                    switch (cmd[0])
+                    {
+                        case "?":
+                        case "help":
+                            Util.Log("Commands: setvip, setmod, setadmin, getinfo, stop");
+                            break;
+
+                        case "stop":
+                            this.Shutdown();
+                            break;
+
+                        case "getinfo":
+                            if (cmd.Length > 1)
+                                HandleConsoleGetInfo(cmd[1]);
+
+                            break;
+
+                        case "setvip":
+                            if (cmd.Length > 1)
+                                HandleConsoleSetRank(uint.Parse(cmd[1]), Ranks.INFLUENCER);
+
+                            break;
+
+                        case "setmod":
+                            if (cmd.Length > 1)
+                                HandleConsoleSetRank(uint.Parse(cmd[1]), Ranks.MODERATOR);
+
+                            break;
+
+                        case "setadmin":
+
+                            if (cmd.Length > 1)
+                                HandleConsoleSetRank(uint.Parse(cmd[1]), Ranks.ADMIN);
+
+                            break;
+
+                        default:
+                            Util.Log("Unknown command. Type 'help' for a list of commands.");
+                            break;
+                    }
+                }
+                catch { Util.Log("Invalid arguments!"); }
+            }
+        }
 
         public void Shutdown()
         {
@@ -52,9 +175,10 @@ namespace PixelWorldsServer2.Networking.Server
                 players.Clear();
                 tickTimer.Stop();
 
-                GC.KeepAlive(this);
                 Util.Log($"Shutdown finished in {Util.GetMs() - ms} ms.");
-                Environment.Exit(0);
+
+                wantsShutdown = true;
+                GC.KeepAlive(this);
             }
             catch (Exception ex)
             {
@@ -250,7 +374,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if (!p.isInGame)
             {
-                Console.WriteLine("Player nowhere ingame anymore, unregistering session...");
+                Util.Log("Player nowhere ingame anymore, unregistering session...");
 
                 GetMessageHandler().HandleLeaveWorld(p, null);
                 p.SetClient(null);

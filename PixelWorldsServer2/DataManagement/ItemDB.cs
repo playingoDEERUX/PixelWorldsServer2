@@ -113,7 +113,7 @@ namespace PixelWorldsServer2.DataManagement
             string s = name.ToLower();
             foreach (var item in items)
             {
-                if (item.name.ToLower().Contains(s))
+                if (item.name.ToLower().StartsWith(s))
                     foundItems.Add(item);
             }
 
@@ -149,7 +149,7 @@ namespace PixelWorldsServer2.DataManagement
 
                 items.Add(item);
             }
-            Console.WriteLine($"Initialized item database, {items.Count} entries!");
+            Util.Log($"Initialized item database, {items.Count} entries!");
         }
     }
 }
