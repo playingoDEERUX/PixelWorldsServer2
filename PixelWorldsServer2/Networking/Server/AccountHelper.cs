@@ -66,6 +66,7 @@ namespace PixelWorldsServer2.Networking.Server
                 p.Data.Token = cogToken;
                 p.Data.Name = name;
                 p.Data.LastIP = ip;
+                p.pSettings = new PlayerSettings();
                 p.Data.Inventory = new PlayerInventory();
 
                 return p;
