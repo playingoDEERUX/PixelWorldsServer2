@@ -19,6 +19,32 @@ namespace PixelWorldsServer2.World
             this.pServer = pServer;
         }
 
+        private readonly int UNLOAD_WORLDS_MB_THRESHOLD = 768;
+
+        public void CheckAll()
+        {
+            // Unload the worlds that don't have players if we can.
+
+            long totalMemMB = GC.GetTotalMemory(false) / 100000;
+            
+            if (totalMemMB >= UNLOAD_WORLDS_MB_THRESHOLD)
+            {
+                List<WorldSession> worldSessionsToRemove = new List<WorldSession>();
+                foreach (var w in worlds)
+                {
+                    if (w.Players.Count > 0)
+                        continue;
+
+                    w.Save();
+                }
+
+                foreach (var w in worldSessionsToRemove)
+                    Remove(w);
+
+                GC.Collect();
+            }
+        }
+
         public void Clear() => worlds.Clear();
 
         public void SaveAll()
@@ -27,40 +53,8 @@ namespace PixelWorldsServer2.World
 
             foreach (var w in worlds)
             {
-                string path = $"maps/{w.WorldName}.map";
                 Util.Log($"Found cached world: {w.WorldName}, saving it...");
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    ms.WriteByte(0x1); // version
-                    ms.Write(BitConverter.GetBytes(w.OwnerID));
-
-                    for (int y = 0; y < w.GetSizeY(); y++)
-                    {
-                        for (int x = 0; x < w.GetSizeX(); x++)
-                        {
-                            var tile = w.GetTile(x, y);
-
-                            ms.Write(BitConverter.GetBytes(tile.fg.id));
-                            ms.Write(BitConverter.GetBytes(tile.bg.id));
-                            ms.Write(BitConverter.GetBytes(tile.water.id));
-                            ms.Write(BitConverter.GetBytes(tile.wire.id));
-                        }
-                    }
-
-                    ms.Write(BitConverter.GetBytes(w.collectables.Values.Count));
-                    for (int i = 0; i < w.collectables.Values.Count; i++)
-                    {
-                        var col = w.collectables.ElementAt(i).Value;
-                        ms.Write(BitConverter.GetBytes(col.item));
-                        ms.Write(BitConverter.GetBytes(col.amt));
-                        ms.Write(BitConverter.GetBytes(col.posX));
-                        ms.Write(BitConverter.GetBytes(col.posY));
-                        ms.Write(BitConverter.GetBytes(col.gemType));
-                    }
-
-                    File.WriteAllBytes(path, Util.LZMAHelper.CompressLZMA(ms.ToArray()));
-                    SpinWait.SpinUntil(() => Util.IsFileReady(path));
-                }
+                w.Save();
             }
         }
 
@@ -93,6 +87,8 @@ namespace PixelWorldsServer2.World
             
             return null;
         }
+
+        public void Remove(WorldSession world) => worlds.Remove(world);
 
         public void Add(WorldSession world) => worlds.Add(world);
     }

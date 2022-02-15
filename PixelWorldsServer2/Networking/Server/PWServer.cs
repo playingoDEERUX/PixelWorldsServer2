@@ -276,6 +276,8 @@ namespace PixelWorldsServer2.Networking.Server
                     }
                 }
 
+                //worldManager.CheckAll();
+
                 if (Util.GetSec() > lastDiscordUpdateTime + 29)
                 {
                     _ = DiscordBot.UpdateStatus($"Join {playersOn} other players!");

@@ -57,11 +57,9 @@ namespace PixelWorldsServer2
                     "ByteCoins int NOT NULL DEFAULT '0'," +
                     "Settings int NOT NULL DEFAULT '0'," +
                     "Inventory varbinary(6144) DEFAULT NULL," +
+                    "Pass varchar(32) NOT NULL DEFAULT ''," +
+                    "OPStatus int NOT NULL DEFAULT '0'," +
                     "BSON MEDIUMBLOB DEFAULT NULL)");
-
-                pSQL.Query("ALTER TABLE players ADD COLUMN Pass varchar(32) NOT NULL DEFAULT ''");
-                pSQL.Query("ALTER TABLE players ADD COLUMN OPStatus int NOT NULL DEFAULT '0'");
-                pSQL.Query("ALTER TABLE players ADD COLUMN BSON MEDIUMBLOB DEFAULT NULL");
             }
             else
             {
@@ -78,7 +76,7 @@ namespace PixelWorldsServer2
 
             if (pwServer.Start())
             {
-                Util.Log($"Pixel Worlds Server (0.1.1) has been started. Hosting now at port {pwServer.Port}!");
+                Util.Log($"Pixel Worlds Server (0.1.2) has been started. Hosting now at port {pwServer.Port}!");
 
                 Console.CancelKeyPress += delegate 
                 {

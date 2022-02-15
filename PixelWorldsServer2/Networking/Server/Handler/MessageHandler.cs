@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using static PixelWorldsServer2.World.WorldInterface;
 
 namespace PixelWorldsServer2.Networking.Server
@@ -192,6 +193,14 @@ namespace PixelWorldsServer2.Networking.Server
                                 }
                                 break;
                             }
+
+                        case "Di":
+                            HandleDropItem(p, mObj);
+                            break;
+
+                        case "mp":
+                            // Not sure^^
+                            break;
 
                         case MsgLabels.Ident.MovePlayer:
                             HandleMovePlayer(p, mObj);
@@ -489,6 +498,10 @@ namespace PixelWorldsServer2.Networking.Server
                         res = HandleCommandLogin(p, tokens);
                         break;
 
+                    case "/seed":
+
+                        break;
+
                     case "/item":
                         if (tokCount < 2)
                         {
@@ -507,7 +520,8 @@ namespace PixelWorldsServer2.Networking.Server
                             }
                             else
                             {
-                                if (id == 413)
+                                
+                                if (Shop.ContainsItem(id))
                                 {
                                     res = "This item must be bought!";
                                     break;
@@ -1267,6 +1281,35 @@ namespace PixelWorldsServer2.Networking.Server
 
             p.Data.Inventory.Remove(new InventoryItem(blockType));
         }
+
+        public void HandleDropItem(Player p, BSONObject bObj)
+        {
+            if (p == null)
+                return;
+
+            if (p.world == null)
+                return;
+
+            BSONObject dObj = bObj["dI"] as BSONObject;
+
+            int blockType = dObj["BlockType"];
+            int amount = dObj["Amount"];
+
+            var invItem = p.Data.Inventory.Get(blockType);
+            
+            if (invItem == null)
+                return;
+
+            if (invItem.amount >= amount)
+            {
+                invItem.amount -= (short)amount;
+                if (invItem.amount <= 0)
+                    p.Data.Inventory.Remove(invItem);
+
+                p.world.Drop(blockType, amount, p.Data.PosX - 0.32d, p.Data.PosY);
+            }
+        }
+
         public void HandleMovePlayer(Player p, BSONObject bObj)
         {
             if (p == null)

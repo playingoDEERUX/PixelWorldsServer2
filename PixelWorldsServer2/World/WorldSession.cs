@@ -7,6 +7,7 @@ using Kernys.Bson;
 using PixelWorldsServer2.DataManagement;
 using System.Linq;
 using static PixelWorldsServer2.World.WorldInterface;
+using System.Threading;
 
 namespace PixelWorldsServer2.World
 {
@@ -133,6 +134,44 @@ namespace PixelWorldsServer2.World
             WorldName = name;
 
             SetupTerrain();
+        }
+
+        public void Save()
+        {
+            string path = $"maps/{WorldName}.map";
+            
+            using (MemoryStream ms = new MemoryStream())
+            {
+                ms.WriteByte(0x1); // version
+                ms.Write(BitConverter.GetBytes(OwnerID));
+
+                for (int y = 0; y < GetSizeY(); y++)
+                {
+                    for (int x = 0; x < GetSizeX(); x++)
+                    {
+                        var tile = GetTile(x, y);
+
+                        ms.Write(BitConverter.GetBytes(tile.fg.id));
+                        ms.Write(BitConverter.GetBytes(tile.bg.id));
+                        ms.Write(BitConverter.GetBytes(tile.water.id));
+                        ms.Write(BitConverter.GetBytes(tile.wire.id));
+                    }
+                }
+
+                ms.Write(BitConverter.GetBytes(collectables.Values.Count));
+                for (int i = 0; i < collectables.Values.Count; i++)
+                {
+                    var col = collectables.ElementAt(i).Value;
+                    ms.Write(BitConverter.GetBytes(col.item));
+                    ms.Write(BitConverter.GetBytes(col.amt));
+                    ms.Write(BitConverter.GetBytes(col.posX));
+                    ms.Write(BitConverter.GetBytes(col.posY));
+                    ms.Write(BitConverter.GetBytes(col.gemType));
+                }
+
+                File.WriteAllBytes(path, Util.LZMAHelper.CompressLZMA(ms.ToArray()));
+                SpinWait.SpinUntil(() => Util.IsFileReady(path));
+            }
         }
 
         public void SetupTerrain()

@@ -31,7 +31,7 @@ namespace PixelWorldsServer2
 
         public Animation.HotSpots[] AnimHotSpots;
 
-        public InventoryItem Get(short id, short flags = 0)
+        public InventoryItem Get(int id, short flags = 0)
         {
             foreach (InventoryItem i in itemList)
             {

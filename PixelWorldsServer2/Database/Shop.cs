@@ -22,6 +22,17 @@ namespace PixelWorldsServer2.Database
             offers[name] = sr;
         }
 
+        public static bool ContainsItem(int item)
+        {
+            foreach (var res in offers.Values)
+            {
+                if (res.items.Contains(item))
+                    return true;
+            }
+
+            return false;
+        }
+
         public static void Init()
         {
             AddShopOffer("WorldLock", 3500, 413);

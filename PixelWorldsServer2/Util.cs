@@ -139,6 +139,10 @@ namespace PixelWorldsServer2
             return new string(letters);
         }
 
+        public static void LogBinary(byte[] bin)
+        {
+            Util.Log(String.Format("{0:X2}", Convert.ToUInt64(bin)));
+        }
         public static void Log(string text)
         {
             logQueue.Enqueue("[SERVER at " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "]: " + text);
