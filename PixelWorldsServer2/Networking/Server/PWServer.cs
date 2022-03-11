@@ -18,7 +18,7 @@ namespace PixelWorldsServer2.Networking.Server
     {
         private Timer tickTimer = new Timer(FeatherDefaults.PING_CLOCK_MS);
         public bool wantsShutdown = false;
-        public int Version = 91;
+        public int Version = 92;
         public int Port; // for quick-accessibility
         private FeatherServer fServer = null;
         private MessageHandler msgHandler = null;
@@ -313,7 +313,15 @@ namespace PixelWorldsServer2.Networking.Server
                             break;
 
                         case FeatherEvent.Types.RECEIVE:
-                            onReceive(ev.client, SimpleBSON.Load(ev.packetData), ev.flags);
+                            try
+                            {
+                                onReceive(ev.client, SimpleBSON.Load(ev.packetData), ev.flags);
+                            }
+                            catch (Exception ex)
+                            {
+                                if (ex.Message.Contains("Don't know elementType"))
+                                    ev.client.DisconnectLater();
+                            }
                             break;
 
                         case FeatherEvent.Types.PING_NOW:

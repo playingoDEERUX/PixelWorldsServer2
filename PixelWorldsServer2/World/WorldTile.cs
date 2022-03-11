@@ -15,6 +15,7 @@ namespace PixelWorldsServer2.World
 
     public struct WorldLayer
     {
+        // straight taken from PW
         public short id; // item id
         public byte blockType, damage;
         public object anotherSprite; // ?

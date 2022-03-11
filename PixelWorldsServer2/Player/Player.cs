@@ -96,14 +96,14 @@ namespace PixelWorldsServer2
             catch
             {
                 pData.BSON = new BSONObject();
-                //Util.Log("Failed to read BSON extended data for User " + pData.UserID.ToString("X8") + "!");
             }
 
-            pData.Inventory = new PlayerInventory(invData); // todo load inv from sql
+            pData.Inventory = new PlayerInventory(invData);
         }
 
         public FeatherClient Client { get { return fClient; } }
         public ref dynamic ClientData { get { return ref fClient.data; } }
+
         public ref PlayerData Data => ref pData;
 
         public void Tick()
