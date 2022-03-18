@@ -262,7 +262,9 @@ namespace PixelWorldsServer2.Networking.Server
                     if (p.isInGame)
                     {
                         playersOn++;
-                        p.Tick();
+                        
+                        if (!p.isLoadingWorld)
+                            p.Tick();
                     }
                 }
 

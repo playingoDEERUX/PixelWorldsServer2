@@ -31,7 +31,7 @@ namespace FeatherNet
 
     public struct FeatherDefaults
     {
-        public const int PING_CLOCK_MS = 25; // Tickrate. Setting this too low will cause high cpu, 25ms (40 hz) is good.
+        public const int PING_CLOCK_MS = 15; // Tickrate. Setting this too low will cause high cpu, 25ms (40 hz) is good.
         // ^^ use 15 ms (66 hz) if you have a good server.
 
         public const int PING_MULTIPLIER = 1;
@@ -280,7 +280,11 @@ namespace FeatherNet
         }
 
         public void Timeout() => this.timedOut = true;
-        public void DisconnectLater() => this.disconnectLater = true;
+        public void DisconnectLater()
+        {
+            Flush();
+            this.disconnectLater = true;
+        }
         private FeatherEvent Receive(byte[] buffer)
         {
             FeatherEvent ev = new FeatherEvent();

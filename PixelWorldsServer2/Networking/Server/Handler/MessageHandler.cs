@@ -51,6 +51,10 @@ namespace PixelWorldsServer2.Networking.Server
                 BSONObject mObj = bObj[$"m{i}"] as BSONObject;
                 string mID = mObj[MsgLabels.MessageID];
 
+#if DEBUG
+                Util.Log("Got message: " + mID);
+#endif
+
                 switch (mID)
                 {
                     case MsgLabels.Ident.VersionCheck:
@@ -77,6 +81,13 @@ namespace PixelWorldsServer2.Networking.Server
 
                     case MsgLabels.Ident.GetWorld:
                         HandleGetWorld(p, mObj);
+                        break;
+
+                    case "GSb":
+                        if (p != null)
+                            p.isLoadingWorld = false;
+
+                        p.Send(ref mObj);
                         break;
 
                     case "WCM":
@@ -277,10 +288,7 @@ namespace PixelWorldsServer2.Networking.Server
                     {
                         if (p.Client.isConnected())
                         {
-                            BSONObject r = new BSONObject("DR");
-                            p.Client.Send(r);
-                            p.Client.Flush();
-
+                            p.Client.Send(new BSONObject("DR"));
                             p.Client.DisconnectLater();
                         }
                     }
@@ -323,8 +331,9 @@ namespace PixelWorldsServer2.Networking.Server
 
         public string HandleCommandClearInventory(Player p)
         {
-            foreach (var invItem in p.Data.Inventory.Items)
-                p.Data.Inventory.Remove(invItem);
+            p.Data.Inventory.Items.Clear();
+            BSONObject r = new BSONObject("DR");
+            p.Send(ref r);
 
             return "Cleared inventory!";
         }
@@ -683,6 +692,9 @@ namespace PixelWorldsServer2.Networking.Server
             resp["W"] = Util.LZMAHelper.CompressLZMA(SimpleBSON.Dump(wObj));
 
             p.Send(ref resp);
+            p.Tick();
+
+            p.isLoadingWorld = true;
         }
 
         public void HandleLeaveWorld(Player p, BSONObject bObj)
@@ -702,6 +714,7 @@ namespace PixelWorldsServer2.Networking.Server
                 p.Send(ref bObj);
 
             p.world.RemovePlayer(p);
+            p.isLoadingWorld = false;
 
             Util.Log($"Player with UserID {p.Data.UserID} left the world!");
         }

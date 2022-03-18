@@ -18,6 +18,7 @@ namespace PixelWorldsServer2
         public PlayerSettings pSettings = null;
         public bool isInGame = false; // when the player has logon and is inside.
         public bool sendPing = false;
+        public bool isLoadingWorld = false;
         public struct PlayerData
         {
             public Player player;
