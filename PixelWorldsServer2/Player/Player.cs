@@ -19,6 +19,7 @@ namespace PixelWorldsServer2
         public bool isInGame = false; // when the player has logon and is inside.
         public bool sendPing = false;
         public bool isLoadingWorld = false;
+        public bool IsOnline() => isInGame && Client != null;
         public struct PlayerData
         {
             public Player player;
@@ -90,11 +91,18 @@ namespace PixelWorldsServer2
             if (!Convert.IsDBNull(bsonObj))
                 bsonData = (byte[])bsonObj;
 
-            try
+            if (bsonData != null)
             {
-                pData.BSON = SimpleBSON.Load(bsonData);
+                try
+                {
+                    pData.BSON = SimpleBSON.Load(bsonData);
+                }
+                catch
+                {
+                    pData.BSON = new BSONObject();
+                }
             }
-            catch
+            else
             {
                 pData.BSON = new BSONObject();
             }
@@ -158,6 +166,15 @@ namespace PixelWorldsServer2
         {
             Data.Gems -= amt;
             BSONObject bObj = new BSONObject("RG");
+            bObj["Amt"] = amt;
+
+            Send(ref bObj);
+        }
+
+        public void AddGems(int amt)
+        {
+            Data.Gems += amt;
+            BSONObject bObj = new BSONObject("GG");
             bObj["Amt"] = amt;
 
             Send(ref bObj);

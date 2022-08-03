@@ -10,7 +10,7 @@ namespace PixelWorldsServer2
     public class DiscordBot
     {
         private static DiscordSocketClient _client = new DiscordSocketClient();
-        private const string token = "OTI1NTExMTEwODUxOTUyNjcw.YcuLYw.GQEp1utua4ckeXpfKGMQ-1YaqCo";
+        private const string token = "MTAwMTc2MzYxNzY2ODA4Mzc3Mw.GHEbJI.0RMKFiGSAHlcQdK26pPQPZS_U1GSWMUEvnWmD4";
         public static bool hasInit = false;
 
         public static async Task UpdateStatus(string status)

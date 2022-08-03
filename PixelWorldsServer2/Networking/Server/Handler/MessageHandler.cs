@@ -236,7 +236,7 @@ namespace PixelWorldsServer2.Networking.Server
                         break;
 
                     default:
-                        pServer.onPing(client, 1);
+                        pServer.OnPing(client, 1);
                         break;
 
                 }
@@ -336,6 +336,70 @@ namespace PixelWorldsServer2.Networking.Server
             p.Send(ref r);
 
             return "Cleared inventory!";
+        }
+
+        public string HandleCommandGlobalMessage(Player p, string[] args)
+        {
+            if (args.Length < 2)
+            {
+                return "Usage: /gm (message to broadcast)";
+            }
+
+            string msg_query = "";
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                msg_query += args[i];
+
+                if (i < args.Length - 1) msg_query += " ";
+            }
+
+
+            if (p.Data.Gems >= 100)
+            {
+                p.RemoveGems(100);
+                BSONObject gObj = new BSONObject(MsgLabels.Ident.BroadcastGlobalMessage);
+                gObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage($"<color=#00FFFF>Broadcast from {p.Data.Name}", p.world.WorldName, p.world.WorldName, 1,
+                   msg_query);
+
+                pServer.Broadcast(ref gObj);
+
+                return "Sent message to everybody.";
+            }
+            else
+            {
+                return "Not enough gems to send a Global Message to everybody! (You need 100 at least).";
+            }
+        }
+
+        public string HandleCommandPay(Player p, string[] args)
+        {
+            if (args.Length < 3)
+                return "Usage: /pay (NAME) (GEMS)";
+
+            string user = args[1];
+            int amt;
+            int.TryParse(args[2], out amt);
+
+            if (amt < 50 || amt > 9999999)
+            {
+                return "Can only send gems between 50 and 9999999!";
+            }
+
+            if (p.Data.Gems < amt)
+                return "Not enough gems to transfer.";
+
+            var player = pServer.GetOnlinePlayerByName(user);
+            if (player == null)
+                return String.Format(">> {0} is offline.", user);
+
+            if (player == p)
+                return "Cannot transfer gems to yourself, duh!";
+
+            p.RemoveGems(amt);
+            player.AddGems(amt);
+
+            return String.Format("Transferred {0} Gems to Account {1}!", amt, player.Data.Name);
         }
 
         public string HandleCommandRegister(Player p, string[] args)
@@ -450,8 +514,29 @@ namespace PixelWorldsServer2.Networking.Server
                 switch (tokens[0])
                 {
                     case "/help":
-                        res = "Commands >> /help /item /find /register /login";
+                        res = "Commands >> /help /item (item id) /find (item name) /register (username pass) /login (username pass) /gm (message, uses 100 gems) /spin";
                         break;
+
+                    case "/gm":
+                        {
+                            res = HandleCommandGlobalMessage(p, tokens);
+                            break;
+                        }
+
+                    case "/spin":
+                        BSONObject gObj = new BSONObject(MsgLabels.Ident.BroadcastGlobalMessage);
+                        gObj[MsgLabels.ChatMessageBinary] = Util.CreateChatMessage($"<color=#00FAFA>{p.Data.Name}", p.world.WorldName, p.world.WorldName, 1,
+                           String.Format("Spun the wheel and got {0}", Util.rand.Next(0, 36)));
+
+                        p.world.Broadcast(ref gObj);
+                        res = "Everybody saw you SPIN!";
+                        break;
+
+                    case "/pay":
+                        {
+                            res = HandleCommandPay(p, tokens);
+                            break;
+                        }
 
                     case "/find":
                         {
@@ -1102,7 +1187,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 if ((w.OwnerID > 0 && w.OwnerID != p.Data.UserID))
                 {
-                    p.SelfChat("World is owned by someone else!");
+                    p.SelfChat("World is owned by " + pServer.GetNameFromUserID(w.OwnerID));
                     return;
                 }
 
@@ -1154,7 +1239,7 @@ namespace PixelWorldsServer2.Networking.Server
 
                 if ((p.world.OwnerID > 0 && p.world.OwnerID != p.Data.UserID))
                 {
-                    p.SelfChat("World is owned by someone else!");
+                    p.SelfChat("World is owned by " + pServer.GetNameFromUserID(w.OwnerID));
                     return;
                 }
 
@@ -1216,7 +1301,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if ((p.world.OwnerID > 0 && p.world.OwnerID != p.Data.UserID))
             {
-                p.SelfChat("World is owned by someone else!");
+                p.SelfChat("World is owned by " + pServer.GetNameFromUserID(w.OwnerID));
                 return;
             }
 
@@ -1268,7 +1353,7 @@ namespace PixelWorldsServer2.Networking.Server
 
             if ((w.OwnerID > 0 && w.OwnerID != p.Data.UserID))
             {
-                p.SelfChat("World is owned by someone else!");
+                p.SelfChat("World is owned by " + pServer.GetNameFromUserID(w.OwnerID));
                 return;
             }
 

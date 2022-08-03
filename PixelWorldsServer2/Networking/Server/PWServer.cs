@@ -16,7 +16,7 @@ namespace PixelWorldsServer2.Networking.Server
 {
     public class PWServer
     {
-        private Timer tickTimer = new Timer(FeatherDefaults.PING_CLOCK_MS);
+        private readonly Timer tickTimer = new Timer(FeatherDefaults.PING_CLOCK_MS);
         public bool wantsShutdown = false;
         public int Version = 92;
         public int Port; // for quick-accessibility
@@ -33,6 +33,51 @@ namespace PixelWorldsServer2.Networking.Server
         public WorldManager GetWorldManager() => worldManager;
         public AccountHelper GetAccountHelper() => accountHelper;
 
+        // return null if non existent:
+        public Player GetPlayerByUserID(uint userID)
+        {
+            Player p = null;
+
+            if (players.ContainsKey(userID))
+            {
+                p = players[userID];
+            }
+            else
+            {
+                var pSQL = GetSQL();
+
+                var reader = pSQL.FetchQuery("SELECT * FROM players WHERE ID='" + userID.ToString() + "'");
+                if (reader.Read())
+                {
+                    p = new Player(reader);
+                    players[p.Data.UserID] = p;
+                }
+            }
+
+            return p;
+        }
+
+        public string GetNameFromUserID(uint userID)
+        {
+            var p = GetPlayerByUserID(userID);
+
+            return p == null ? "DeletedUser" : p.Data.Name;
+        }
+
+        public Player GetOnlinePlayerByName(string name)
+        {
+            string nameLower = name.ToLower();
+            foreach (var p in players.Values)
+            {
+                if (!p.IsOnline())
+                    continue;
+
+                if (p.Data.Name.ToLower() == nameLower)
+                    return p;
+            }
+
+            return null;
+        }
        
         private void HandleConsoleSetRank(uint userID, Ranks rankType)
         {
@@ -45,7 +90,7 @@ namespace PixelWorldsServer2.Networking.Server
             }
 
             Player p = players[userID];
-            if (!p.isInGame || p.Client == null)
+            if (!p.IsOnline())
             {
                 Util.Log("This user isn't online. Use 'getinfo <name>' if you want to grab the userID of a player's name. (Aborted)");
                 return;
@@ -273,7 +318,7 @@ namespace PixelWorldsServer2.Networking.Server
                 {
                     if (client.areWeSending)
                     {
-                        onPing(client, 1);
+                        OnPing(client, 1);
                         client.Flush();
                     }
                 }
@@ -307,17 +352,17 @@ namespace PixelWorldsServer2.Networking.Server
                     switch (ev.type)
                     {
                         case FeatherEvent.Types.CONNECT:
-                            onConnect(ev.client, ev.flags);
+                            OnConnect(ev.client, ev.flags);
                             break;
 
                         case FeatherEvent.Types.DISCONNECT:
-                            onDisconnect(ev.client, ev.flags);
+                            OnDisconnect(ev.client, ev.flags);
                             break;
 
                         case FeatherEvent.Types.RECEIVE:
                             try
                             {
-                                onReceive(ev.client, SimpleBSON.Load(ev.packetData), ev.flags);
+                                OnReceive(ev.client, SimpleBSON.Load(ev.packetData), ev.flags);
                             }
                             catch (Exception ex)
                             {
@@ -340,7 +385,7 @@ namespace PixelWorldsServer2.Networking.Server
         }
 
         // onPing is used for other stuff too so it's public here...
-        public void onPing(FeatherClient client, int flags)
+        public void OnPing(FeatherClient client, int flags)
         {
             if (client == null)
                 return;
@@ -360,7 +405,7 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
-        private void onDisconnect(FeatherClient client, int flags)
+        private void OnDisconnect(FeatherClient client, int flags)
         {
             if (client == null)
                 return;
@@ -393,7 +438,7 @@ namespace PixelWorldsServer2.Networking.Server
             }
         }
 
-        private void onReceive(FeatherClient client, BSONObject packet, int flags)
+        private void OnReceive(FeatherClient client, BSONObject packet, int flags)
         {
             if (client == null)
                 return;
@@ -402,7 +447,7 @@ namespace PixelWorldsServer2.Networking.Server
             client.areWeSending = true;
         }
 
-        private void onConnect(FeatherClient client, int flags)
+        private void OnConnect(FeatherClient client, int flags)
         {
             if (client == null)
                 return;
