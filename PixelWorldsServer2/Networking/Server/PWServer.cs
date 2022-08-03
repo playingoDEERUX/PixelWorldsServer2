@@ -109,11 +109,19 @@ namespace PixelWorldsServer2.Networking.Server
             }
 
             if (amount < 0)
-                p.RemoveGems((-amount)); // reverse the negativity with another negativity so that it actually removes positive gems again.
-            else
-                p.AddGems(amount);
+            {
+                amount = -amount; // reverse the negativity with another negativity so that it actually removes positive gems again.
+                p.RemoveGems(amount); 
 
-            Util.Log(String.Format("Given {0} Gems to Account {1} (ID: {2})", amount, p.Data.Name, userID));
+                Util.Log(String.Format("Removed {0} Gems from Account {1} (ID: {2})", amount, p.Data.Name, userID));
+            }
+            else
+            {
+                p.AddGems(amount);
+                Util.Log(String.Format("Given {0} Gems to Account {1} (ID: {2})", amount, p.Data.Name, userID));
+            }
+
+           
         }
         private void HandleConsoleSetRank(uint userID, Ranks rankType)
         {
