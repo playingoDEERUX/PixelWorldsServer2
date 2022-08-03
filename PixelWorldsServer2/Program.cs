@@ -76,7 +76,7 @@ namespace PixelWorldsServer2
 
             if (pwServer.Start())
             {
-                Util.Log($"Pixel Worlds Server (0.1.2) has been started. Hosting now at port {pwServer.Port}!");
+                Util.Log($"Pixel Worlds Server (0.1.3) has been started. Hosting now at port {pwServer.Port}!");
 
                 Console.CancelKeyPress += delegate 
                 {
