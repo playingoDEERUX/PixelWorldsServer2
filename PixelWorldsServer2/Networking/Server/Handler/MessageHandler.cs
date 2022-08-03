@@ -514,7 +514,7 @@ namespace PixelWorldsServer2.Networking.Server
                 switch (tokens[0])
                 {
                     case "/help":
-                        res = "Commands >> /help /item (item id) /find (item name) /register (username pass) /login (username pass) /gm (message, uses 100 gems) /spin";
+                        res = "Commands >> /help /item (item id) /find (item name) /register (username pass) /login (username pass) /gm (message, uses 100 gems) /spin /pay (username gems)";
                         break;
 
                     case "/gm":

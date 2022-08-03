@@ -78,19 +78,48 @@ namespace PixelWorldsServer2.Networking.Server
 
             return null;
         }
-       
-        private void HandleConsoleSetRank(uint userID, Ranks rankType)
-        {
-            // duration is in secs here...
 
-            if (!players.ContainsKey(userID))
+        public Player GetOnlinePlayerByUserID(uint userID)
+        {
+            foreach (var p in players.Values)
             {
-                Util.Log("This user isn't online. Use 'getinfo <name>' if you want to grab the userID of a player's name. (Aborted)");
+                if (!p.IsOnline())
+                    continue;
+
+                if (p.Data.UserID == userID)
+                    return p;
+            }
+
+            return null;
+        }
+
+        private void HandleConsoleGiveGems(uint userID, int amount)
+        {
+            if (amount == 0)
+            {
+                Util.Log("Error can't use null amount!");
                 return;
             }
 
-            Player p = players[userID];
-            if (!p.IsOnline())
+            var p = GetOnlinePlayerByUserID(userID);
+            if (p == null)
+            {
+                Util.Log("This user isn't online. (Aborted)");
+                return;
+            }
+
+            if (amount < 0)
+                p.RemoveGems((-amount)); // reverse the negativity with another negativity so that it actually removes positive gems again.
+            else
+                p.AddGems(amount);
+
+            Util.Log(String.Format("Given {0} Gems to Account {1} (ID: {2})", amount, p.Data.Name, userID));
+        }
+        private void HandleConsoleSetRank(uint userID, Ranks rankType)
+        {
+            // duration is in secs here...
+            var p = GetOnlinePlayerByUserID(userID);
+            if (p == null)
             {
                 Util.Log("This user isn't online. Use 'getinfo <name>' if you want to grab the userID of a player's name. (Aborted)");
                 return;
@@ -188,6 +217,13 @@ namespace PixelWorldsServer2.Networking.Server
 
                             if (cmd.Length > 1)
                                 HandleConsoleSetRank(uint.Parse(cmd[1]), Ranks.ADMIN);
+
+                            break;
+
+                        case "givegems":
+
+                            if (cmd.Length > 2)
+                                HandleConsoleGiveGems(uint.Parse(cmd[1]), int.Parse(cmd[2]));
 
                             break;
 

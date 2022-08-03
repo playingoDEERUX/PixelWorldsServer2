@@ -206,6 +206,9 @@ namespace PixelWorldsServer2
             cmd.Parameters.AddWithValue("@ByteCoins", Data.Coins);
             cmd.Parameters.AddWithValue("@IP", Data.LastIP);
             cmd.Parameters.AddWithValue("@Settings", pSettings.GetSettings());
+            if (Data.BSON == null)
+                Data.BSON = new BSONObject();
+            
             cmd.Parameters.AddWithValue("@BSON", SimpleBSON.Dump(Data.BSON));
 
             byte[] invData = Data.Inventory.Serialize();
