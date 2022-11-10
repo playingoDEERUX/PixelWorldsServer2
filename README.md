@@ -12,11 +12,13 @@ Features:
 - Worlds
 - Broadcasting Message
 - Shop working with almost all packs
-- Basic Lock System
+- Basic Lock System with ownership
 - Proper Ticking System and message handling just like in real PW so that the PW Client never dies or gets disconnected randomly
 - Getting free items
 - Proper TCP Server with Timeout Handling (within my own FeatherNet TCP wrapper)
 - Easy management
+- Multithreading (server itself is single-threaded, but sending packets, player sessions and performing most operations on the server itself is thread-safe)
+- Proper Admin Console (can type in commands into the console and do something, forexample 'getinfo <userID>' or '
 - Proper Session Management
 - Proper message framing to handle packets beyond 64KB if ever needed (within my own FeatherNet TCP wrapper)
 - Many more
