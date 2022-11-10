@@ -1,6 +1,23 @@
 # PixelWorldsServer2
-project launch estimated 2022 jan.
+First ever Pixel Worlds Private Server made in C# (Can be validated by the date this repo was created)
 
-NOTE: Project acquired by ByteZ now, it's too much effort for me to focus on advertising PWPS and school and growmmfi at the same time...
+Features:
 
-I have 0% control over what he does with this project, but I will still develop for him in the PWPS without taking responsibility for the server cost or promotion cost.
+- Multiplayer
+- Breaking/Placing Blocks/Water/Gates
+- Registration System
+- Chatting
+- Wearing Clothes
+- Collecting
+- Worlds
+- Broadcasting Message
+- Shop working with almost all packs
+- Basic Lock System
+- Getting free items
+- Proper TCP Server with Timeout Handling
+- Easy management
+- Proper Session Management
+- Proper message framing to handle packets beyond 64KB if ever needed (within my own FeatherNet library)
+- Many more
+
+Fast & Reliable Code: Uses SQLite as backend for Database Management.
