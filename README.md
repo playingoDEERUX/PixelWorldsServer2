@@ -11,7 +11,7 @@ Features:
 - Wearing Clothes
 - Collecting
 - Worlds
-- Broadcasting Message
+- Broadcasting Global Message
 - Shop working with almost all packs
 - Basic Lock System with ownership
 - Proper Ticking System and message handling just like in real PW so that the PW Client never dies or gets disconnected randomly
