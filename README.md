@@ -1,5 +1,6 @@
 # PixelWorldsServer2
 First ever Pixel Worlds Private Server (Can be validated by the date this repo was created),
+[Also this is the second version of PWPS, refer to github.com/playingoDEERUX/PixelWorldsServer for V1 which was released way earlier and has less features than this]
 
 Features:
 
