@@ -13,7 +13,7 @@ Features:
 - Broadcasting Message
 - Shop working with almost all packs
 - Basic Lock System
-- Proper Ticking System just like in real PW so that the PW Client never dies
+- Proper Ticking System just like in real PW so that the PW Client never dies or gets disconnected randomly
 - Getting free items
 - Proper TCP Server with Timeout Handling (within my own FeatherNet TCP wrapper)
 - Easy management
