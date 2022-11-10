@@ -22,3 +22,6 @@ Features:
 
 Fast & Reliable Code: Uses SQLite as backend for Database Management.
 Have fun with this, I won't maintain this anymore since I've quit.
+
+NOTE: You need player.dat and items.txt in the same location as server executable to host this.
+This project uses .NET Core so it is crossplatform for both Windows & Linux.
