@@ -14,10 +14,10 @@ Features:
 - Shop working with almost all packs
 - Basic Lock System
 - Getting free items
-- Proper TCP Server with Timeout Handling
+- Proper TCP Server with Timeout Handling (within my own FeatherNet TCP wrapper)
 - Easy management
 - Proper Session Management
-- Proper message framing to handle packets beyond 64KB if ever needed (within my own FeatherNet library)
+- Proper message framing to handle packets beyond 64KB if ever needed (within my own FeatherNet TCP wrapper)
 - Many more
 
 Fast & Reliable Code: Uses SQLite as backend for Database Management.
