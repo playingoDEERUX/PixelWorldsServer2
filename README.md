@@ -1,5 +1,5 @@
 # PixelWorldsServer2
-First ever proper Pixel Worlds Private Server (Can be validated by the date this repo was created)
+First ever Pixel Worlds Private Server (Can be validated by the date this repo was created),
 
 Features:
 
