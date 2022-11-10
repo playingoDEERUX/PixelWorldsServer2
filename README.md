@@ -25,6 +25,7 @@ Features:
 - Proper Session Management
 - Proper message framing to handle packets beyond 64KB if ever needed (within my own FeatherNet TCP wrapper)
 - Many more
+- Stable: This server is able to handle hundreds of players and hasn't unexpectedly crashed or was ever frozen at all.
 
 Fast & Reliable Code: Uses SQLite as backend for Database Management.
 Have fun with this, I won't maintain this anymore since I've quit.
