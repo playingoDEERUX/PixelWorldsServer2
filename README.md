@@ -21,3 +21,4 @@ Features:
 - Many more
 
 Fast & Reliable Code: Uses SQLite as backend for Database Management.
+Have fun with this, I won't maintain this anymore since I've quit.
