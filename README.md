@@ -18,6 +18,7 @@ Features:
 - Getting free items
 - Proper TCP Server with Timeout Handling (within my own FeatherNet TCP wrapper)
 - Easy management
+- Respawning to Spawn Entrance
 - Multithreading (server itself is single-threaded, but sending packets, player sessions and performing most operations on the server itself is thread-safe)
 - Proper Admin Console (can type in commands into the console and do something, for example 'getinfo (username)' to also grab userID and additional infos about the user or e.g 'givegems (userid) (amount)')
 - Logger Thread
