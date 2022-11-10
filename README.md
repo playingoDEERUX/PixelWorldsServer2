@@ -20,6 +20,7 @@ Features:
 - Multithreading (server itself is single-threaded, but sending packets, player sessions and performing most operations on the server itself is thread-safe)
 - Proper Admin Console (can type in commands into the console and do something, forexample 'getinfo <user name exact>' to also grab userID and additional infos about the user or e.g 'givegems <userid> <amount>')
 - Logger Thread
+- Integrated/Embedded Discord Bot
 - Proper Session Management
 - Proper message framing to handle packets beyond 64KB if ever needed (within my own FeatherNet TCP wrapper)
 - Many more
