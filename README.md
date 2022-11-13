@@ -12,6 +12,7 @@ Features:
 - Collecting/Collectables & Dropped items
 - Worlds
 - Broadcasting Global Message
+- Saving/Loading players/worlds from SQLite & file (You will need 'maps' folder in location of server executable, world files are saved as .map)
 - Shop working with almost all packs
 - Basic Lock System with ownership
 - Proper Ticking System and message handling just like in real PW so that the PW Client never dies or gets disconnected randomly
