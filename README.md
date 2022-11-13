@@ -5,7 +5,8 @@ First ever Pixel Worlds Private Server (Can be validated by the date this repo w
 Features:
 
 - Multiplayer
-- Breaking/Placing Blocks/Water/Gates
+- Uses non blocking TCP socket to avoid having to deal with async stuff and focus more on high single core performance
+- Breaking/Placing Blocks/Water/Gates + Damaging them
 - Registration System
 - Chatting
 - Wearing Clothes
