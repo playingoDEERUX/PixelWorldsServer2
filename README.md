@@ -9,7 +9,7 @@ Features:
 - Registration System
 - Chatting
 - Wearing Clothes
-- Collecting
+- Collecting/Collectables & Dropped items
 - Worlds
 - Broadcasting Global Message
 - Shop working with almost all packs
